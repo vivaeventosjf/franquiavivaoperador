@@ -55,7 +55,7 @@
           score: 40,
           feedback: {
             title: 'É exatamente quem estamos procurando.',
-            body: 'Você já senta com comissão, já conduz assembleia e já sabe o tamanho do contrato. Falta só <span class="hl">o contrato ser seu</span>.'
+            body: 'Você já senta com comissão, já apresenta proposta e já sabe o tamanho do contrato. Falta só <span class="hl">o contrato ser seu</span>.'
           }
         },
         {
