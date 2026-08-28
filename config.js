@@ -4,7 +4,7 @@
  * ============================================================ */
 
 /* WhatsApp do time de expansão: 55 + DDD + número (só dígitos) */
-const WHATS = '5521999999999';
+const WHATS = '5532988677558';
 
 /* Mensagem que já vem digitada quando a pessoa abre o WhatsApp */
 const WHATS_MSG = 'Oi! Vim pela página de operadores da VIVA e quero entender como entrar como sócio-operador de uma nova unidade.';

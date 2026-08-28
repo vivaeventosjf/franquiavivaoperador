@@ -25,15 +25,15 @@ fora do mercado são aceitos, mas classificados abaixo.
 ## Antes de publicar, edite `config.js`
 
 ```js
-const WHATS = '5521999999999';   // <- WhatsApp real do time de expansão
+const WHATS = '5532988677558';   // <- WhatsApp do time de expansão (já preenchido)
 const SHEET_URL = '';            // <- URL /exec do Apps Script (ver abaixo)
 const CRM_URL = '';              // <- webhook do CRM, se houver
 const PRACAS_ABERTAS = 50;       // <- praças disponíveis (0 esconde a escassez)
 ```
 
-O número do WhatsApp está como **placeholder**, herdado da outra landing do
-projeto. Enquanto `SHEET_URL` estiver vazio, o formulário funciona normalmente na
-tela, mas a candidatura não é gravada em lugar nenhum.
+O WhatsApp já está preenchido com o número do time de expansão,
+**(32) 98867-7558**. Enquanto `SHEET_URL` estiver vazio, o formulário funciona
+normalmente na tela, mas a candidatura não é gravada em lugar nenhum.
 
 ## Receber as candidaturas numa planilha
 
