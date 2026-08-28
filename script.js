@@ -104,12 +104,6 @@
 
   setHref('waFloat', waLink);
   setHref('ctaWhats', waLink);
-  setHref('lnkSite', typeof SITE_URL !== 'undefined' ? SITE_URL : '');
-  setHref('lnkFranquias', typeof FRANQUIAS_URL !== 'undefined' ? FRANQUIAS_URL : '');
-  setHref('lnkDep2', typeof DEPOIMENTOS_URL !== 'undefined' ? DEPOIMENTOS_URL : '');
-  setHref('lnkInsta', typeof INSTAGRAM !== 'undefined' ? INSTAGRAM : '');
-  setHref('lnkYt', typeof YOUTUBE !== 'undefined' ? YOUTUBE : '');
-  setHref('lnkFb', typeof FACEBOOK !== 'undefined' ? FACEBOOK : '');
 
   /* ---------- Contador de praças abertas ---------- */
   var pracas = typeof PRACAS_ABERTAS !== 'undefined' ? PRACAS_ABERTAS : 0;
