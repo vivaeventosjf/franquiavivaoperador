@@ -1,6 +1,6 @@
 /* ============================================================
  * VIVA Eventos · Candidatura de sócio-operador
- * Formulário de 8 etapas que qualifica o lead, sugere a
+ * Formulário de 7 etapas que qualifica o lead, sugere a
  * composição societária e envia para planilha + CRM.
  * Constantes de contato e integração vêm de config.js.
  * ============================================================ */
@@ -24,6 +24,26 @@
    * Perguntas
    * ============================================================ */
   var QUESTIONS = [
+    {
+      id: 'nome',
+      type: 'text',
+      label: 'Primeiro, como a gente te chama?',
+      placeholder: 'Seu nome completo'
+    },
+    {
+      id: 'whatsapp',
+      type: 'phone',
+      label: 'E o seu WhatsApp?',
+      hint: 'É por aqui que o time de expansão vai te procurar. Nada de ligação surpresa.',
+      placeholder: '(00) 00000-0000'
+    },
+    {
+      id: 'praca',
+      type: 'text',
+      label: 'Em qual cidade você quer operar?',
+      hint: 'Cidade e estado. Vamos checar se a praça está aberta no mapa de expansão.',
+      placeholder: 'Ex: Maceió, AL'
+    },
     {
       id: 'perfil',
       type: 'choice',
@@ -117,68 +137,36 @@
     {
       id: 'capital',
       type: 'choice',
-      label: 'Quanto de capital próprio você consegue colocar hoje?',
-      hint: 'Responda sem medo. Nessas unidades o investidor já cobre a maior parte — isso aqui só ajuda a desenhar a sociedade.',
+      label: 'Que valor você conseguiria entrar como sócio hoje?',
+      hint: 'O investidor cobre a maior parte. A sua entrada é simbólica: serve para você ser sócio de verdade, não para bancar a unidade.',
       options: [
         {
           val: 'Nada agora, entro só com trabalho',
-          score: 4,
+          score: 6,
           feedback: {
             title: 'Isso não te elimina.',
-            body: 'Existem composições em que o operador entra <span class="hl">sem capital</span>, remunerado por pró-labore e participação. O que não pode faltar é experiência e dedicação.'
+            body: 'Existem composições em que o operador entra <span class="hl">sem capital nenhum</span>, remunerado por pró-labore e participação. Mas se der para colocar uma parte, ainda que pequena, a sua fatia da sociedade fica maior.'
           }
         },
-        { val: 'Até R$ 20 mil', score: 8 },
-        { val: 'De R$ 20 mil a R$ 50 mil', score: 12 },
-        { val: 'De R$ 50 mil a R$ 100 mil', score: 15 },
         {
-          val: 'Acima de R$ 100 mil',
+          val: 'Até R$ 5 mil',
+          score: 12,
+          feedback: {
+            title: 'Já resolve.',
+            body: 'É esse tipo de entrada que a gente chama de <span class="hl">participação mínima</span>: pouca grana, mas pele no jogo.'
+          }
+        },
+        { val: 'De R$ 5 mil a R$ 15 mil', score: 15 },
+        { val: 'De R$ 15 mil a R$ 40 mil', score: 17 },
+        {
+          val: 'Acima de R$ 40 mil',
           score: 18,
           feedback: {
-            title: 'Com esse capital você tem mais opções.',
+            title: 'Com esse valor você tem mais opções.',
             body: 'Dá pra desenhar uma sociedade com participação maior e menos diluição.'
           }
         }
       ]
-    },
-    {
-      id: 'dedicacao',
-      type: 'choice',
-      onlyOperador: true,
-      label: 'Como e quando você entraria na operação?',
-      options: [
-        { val: 'Dedicação integral, começando imediatamente', score: 20 },
-        { val: 'Integral, depois de uma transição de até 90 dias', score: 15 },
-        { val: 'Integral, mas só daqui a 6 meses ou mais', score: 8 },
-        {
-          val: 'Meio período, mantendo meu trabalho atual',
-          score: 2,
-          feedback: {
-            title: 'Vamos ser honestos aqui.',
-            body: 'Unidade VIVA não roda nas horas vagas. Você pode seguir respondendo, mas a aprovação exige <span class="hl">dedicação integral</span> do operador.'
-          }
-        }
-      ]
-    },
-    {
-      id: 'praca',
-      type: 'text',
-      label: 'Em qual cidade você quer operar?',
-      hint: 'Cidade e estado. Vamos checar se a praça está aberta no mapa de expansão.',
-      placeholder: 'Ex: Maceió — AL'
-    },
-    {
-      id: 'nome',
-      type: 'text',
-      label: 'Como a gente te chama?',
-      placeholder: 'Seu nome completo'
-    },
-    {
-      id: 'whatsapp',
-      type: 'phone',
-      label: 'Por último: qual o seu WhatsApp?',
-      hint: 'É por aqui que o time de expansão vai te procurar. Nada de ligação surpresa.',
-      placeholder: '(00) 00000-0000'
     }
   ];
 
@@ -188,7 +176,31 @@
   var answers = {};
   var current = 0;
   var finished = false;
-  var elCount, elBar, elBody, elFoot, elCard;
+  var elCount, elBar, elBody, elFoot, elCard, elStart;
+
+  /* ============================================================
+   * URLs de etapa (para GA4, Meta Pixel e metas de conversão)
+   *   #formulario  -> abriu o formulário
+   *   #obrigado    -> concluiu a candidatura
+   * ============================================================ */
+  var HASH_INICIO = '#formulario';
+  var HASH_FIM = '#obrigado';
+
+  function marcarUrl(hash) {
+    try {
+      if (window.history && window.history.pushState) {
+        window.history.pushState({ etapa: hash }, '', hash);
+      } else {
+        window.location.hash = hash;
+      }
+    } catch (e) { /* navegador antigo: segue sem alterar a URL */ }
+
+    try {
+      if (window.dataLayer && window.dataLayer.push) {
+        window.dataLayer.push({ event: 'pageview_virtual', page_path: hash });
+      }
+    } catch (e) { /* sem GTM */ }
+  }
 
   /* ============================================================
    * Helpers
@@ -259,11 +271,11 @@
 
   function classificar() {
     if (ehInvestidor()) return 'Investidor (não operador)';
-    /* Nota máxima possível: 40 + 20 + 16 + 18 + 20 = 114 */
+    /* Nota máxima possível: 40 + 20 + 16 + 18 = 94 */
     var p = pontos();
-    if (p >= 82) return 'A · Prioridade máxima';
-    if (p >= 62) return 'B · Alta';
-    if (p >= 42) return 'C · Média';
+    if (p >= 68) return 'A · Prioridade máxima';
+    if (p >= 51) return 'B · Alta';
+    if (p >= 35) return 'C · Média';
     return 'D · Fora do perfil prioritário';
   }
 
@@ -279,8 +291,8 @@
 
     var posVenda = answers.papel === 'Porta pra dentro: pós-venda e operação';
     var ambas = answers.papel === 'Faço as duas coisas';
-    var capitalAlto = answers.capital === 'De R$ 50 mil a R$ 100 mil' ||
-      answers.capital === 'Acima de R$ 100 mil';
+    var capitalAlto = answers.capital === 'De R$ 15 mil a R$ 40 mil' ||
+      answers.capital === 'Acima de R$ 40 mil';
 
     if (ambas) {
       return {
@@ -472,6 +484,7 @@
   function finish() {
     finished = true;
     submitLead();
+    marcarUrl(HASH_FIM);
 
     var comp = composicao();
     var nome = primeiroNome();
@@ -497,20 +510,21 @@
         '</div>';
     } else {
       html +=
-        '<span class="quiz-stage-chip">Composição sugerida: <b>' + escapeHtml(comp.chip) + '</b></span>' +
-        '<h3 style="margin-top:20px">' + escapeHtml(comp.titulo) + '</h3>' +
+        '<h3>' + escapeHtml(comp.titulo) + '</h3>' +
         '<p>' + escapeHtml(comp.texto) + '</p>' +
-        '<p><strong>' + escapeHtml(nome) + '</strong>, a sua candidatura para <strong>' +
-        escapeHtml(answers.praca || 'a sua praça') + '</strong> chegou ao time de expansão. ' +
-        'Vamos checar a disponibilidade da praça e te chamar no WhatsApp que você deixou.</p>' +
+        '<p><strong>Obrigado, ' + escapeHtml(nome) + '.</strong> A sua candidatura para <strong>' +
+        escapeHtml(answers.praca || 'a sua praça') + '</strong> chegou ao time de expansão da VIVA.</p>' +
         '<div class="quiz-next-steps">' +
         '<h4>O que acontece agora</h4><ul>' +
-        '<li><b>1</b><span>Triagem do seu perfil e da sua cidade — até 48h úteis.</span></li>' +
+        '<li><b>1</b><span>Triagem do seu perfil e da sua cidade, em até 48h úteis.</span></li>' +
         '<li><b>2</b><span>Conversa de alinhamento sobre modelo e sociedade.</span></li>' +
         '<li><b>3</b><span>Apresentação dos números, do contrato e da COF.</span></li>' +
         '</ul></div>' +
+        '<p class="quiz-aviso">Nossa equipe entra em contato pelo WhatsApp <strong>' +
+        escapeHtml(answers.whatsapp || '') + '</strong>. Se preferir não esperar, ' +
+        'fale com a gente agora mesmo, é o caminho mais rápido.</p>' +
         '<div class="quiz-final-cta">' +
-        '<a class="btn btn-primary btn-lg" href="' + wa + '" target="_blank" rel="noopener">Adiantar a conversa no WhatsApp</a>' +
+        '<a class="btn btn-wa btn-lg" href="' + wa + '" target="_blank" rel="noopener">' + iconeWhats() + ' Falar agora no WhatsApp</a>' +
         '<a class="btn btn-ghost btn-lg" href="#estrutura">Rever o que a VIVA entrega</a>' +
         '</div>';
     }
@@ -543,12 +557,16 @@
     } catch (err) { /* sem GTM */ }
   }
 
+  function iconeWhats() {
+    return '<svg class="ico-wa" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.95 1.17-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.76-1.66-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.19 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.7.25-1.29.17-1.42-.07-.13-.27-.2-.57-.35zM12.05 2.5c-5.24 0-9.5 4.26-9.5 9.5 0 1.68.44 3.32 1.28 4.77L2.5 21.5l4.86-1.27c1.39.76 2.96 1.16 4.55 1.16h.01c5.24 0 9.5-4.26 9.5-9.5s-4.26-9.5-9.5-9.5zm0 17.4h-.01c-1.42 0-2.81-.38-4.02-1.1l-.29-.17-2.99.78.8-2.91-.19-.3a7.87 7.87 0 01-1.21-4.2c0-4.36 3.55-7.9 7.91-7.9 2.11 0 4.09.82 5.58 2.32a7.84 7.84 0 012.31 5.59c0 4.36-3.55 7.9-7.9 7.9z"/></svg>';
+  }
+
   function mensagemWhats() {
     return 'Oi! Acabei de me candidatar a sócio-operador da VIVA.\n' +
       'Nome: ' + (answers.nome || '') + '\n' +
       'Perfil: ' + (answers.perfil || '') + '\n' +
-      'Praça: ' + (answers.praca || '') + '\n' +
-      'Entrada: ' + (answers.dedicacao || '');
+      'Praça: ' + (answers.praca || '');
   }
 
   /* ============================================================
@@ -566,7 +584,6 @@
       experiencia: answers.experiencia || '',
       papel: answers.papel || '',
       capital: answers.capital || '',
-      dedicacao: answers.dedicacao || '',
       praca: answers.praca || '',
       nome: answers.nome || '',
       whatsapp: answers.whatsapp || '',
@@ -619,6 +636,220 @@
   }
 
   /* ============================================================
+   * Abertura do formulário
+   * ============================================================ */
+  var aberto = false;
+
+  function abrir(comScroll) {
+    if (aberto) return;
+    aberto = true;
+
+    if (elStart) elStart.hidden = true;
+    if (elCard) elCard.hidden = false;
+
+    render('next');
+    marcarUrl(HASH_INICIO);
+
+    try { if (typeof fbq === 'function') fbq('track', 'InitiateCheckout'); } catch (e) { /* sem pixel */ }
+
+    if (comScroll && elCard && elCard.scrollIntoView) {
+      elCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+
+  /* ============================================================
+   * Gate do WhatsApp
+   * O botão flutuante não manda direto para o wa.me: primeiro
+   * captura nome, WhatsApp e perfil, grava o lead e só então
+   * abre a conversa. Quem já concluiu o formulário passa direto.
+   * ============================================================ */
+  var GATE_IDS = ['nome', 'whatsapp', 'perfil'];
+  var gateAnswers = {};
+  var gateIdx = 0;
+  var gateEl = null;
+  var gateEnviado = false;
+
+  function gateQuestions() {
+    var lista = [];
+    GATE_IDS.forEach(function (id) {
+      for (var i = 0; i < QUESTIONS.length; i++) {
+        if (QUESTIONS[i].id === id) { lista.push(QUESTIONS[i]); return; }
+      }
+    });
+    return lista;
+  }
+
+  function gateRespondida(q) {
+    var v = gateAnswers[q.id];
+    if (q.type === 'phone') return typeof v === 'string' && v.replace(/\D/g, '').length >= 10;
+    if (q.type === 'text') return typeof v === 'string' && v.trim().length >= 2;
+    return typeof v === 'string' && v.trim().length > 0;
+  }
+
+  function gateLink() {
+    var msg = 'Oi! Vim pela página de operadores da VIVA.\n' +
+      'Nome: ' + (gateAnswers.nome || '') + '\n' +
+      'Perfil: ' + (gateAnswers.perfil || '');
+    return 'https://wa.me/' + (typeof WHATS !== 'undefined' ? WHATS : '') +
+      '?text=' + encodeURIComponent(msg);
+  }
+
+  function gateEnviar() {
+    if (gateEnviado) return;
+    gateEnviado = true;
+
+    var body = JSON.stringify({
+      status: 'WhatsApp (contato direto)',
+      classificacao: 'Contato via WhatsApp',
+      pontos: 0,
+      composicao: '',
+      perfil: gateAnswers.perfil || '',
+      experiencia: '',
+      papel: '',
+      capital: '',
+      praca: '',
+      nome: gateAnswers.nome || '',
+      whatsapp: gateAnswers.whatsapp || '',
+      origem: window.location.href
+    });
+    post(typeof SHEET_URL !== 'undefined' ? SHEET_URL : '', body);
+    post(typeof CRM_URL !== 'undefined' ? CRM_URL : '', body);
+
+    try { if (typeof fbq === 'function') fbq('track', 'Contact'); } catch (e) { /* sem pixel */ }
+    try {
+      if (window.dataLayer && window.dataLayer.push) {
+        window.dataLayer.push({ event: 'lead_whatsapp', perfil: gateAnswers.perfil });
+      }
+    } catch (e) { /* sem GTM */ }
+  }
+
+  function gateEsc(e) {
+    if (e.key === 'Escape') gateFechar();
+  }
+
+  function gateFechar() {
+    if (!gateEl) return;
+    document.removeEventListener('keydown', gateEsc);
+    if (gateEl.parentNode) gateEl.parentNode.removeChild(gateEl);
+    gateEl = null;
+  }
+
+  function gateRender() {
+    var perguntas = gateQuestions();
+    var q = perguntas[gateIdx];
+    var ultima = gateIdx === perguntas.length - 1;
+
+    var html = '<h3 class="quiz-q">' + escapeHtml(q.label) + '</h3>';
+    if (q.hint) html += '<p class="quiz-hint">' + escapeHtml(q.hint) + '</p>';
+
+    if (q.type === 'text' || q.type === 'phone') {
+      var val = gateAnswers[q.id] ? escapeHtml(gateAnswers[q.id]) : '';
+      html += '<input class="quiz-input" type="' + (q.type === 'phone' ? 'tel' : 'text') + '"' +
+        (q.type === 'phone' ? ' inputmode="tel"' : '') +
+        ' id="gateField" placeholder="' + escapeHtml(q.placeholder || '') +
+        '" value="' + val + '" autocomplete="off">';
+    } else {
+      html += '<div class="quiz-options">';
+      q.options.forEach(function (opt, i) {
+        html += '<button type="button" class="quiz-opt' +
+          (gateAnswers[q.id] === opt.val ? ' selected' : '') +
+          '" data-idx="' + i + '"><span class="radio"></span><span>' +
+          escapeHtml(opt.val) + '</span></button>';
+      });
+      html += '</div>';
+    }
+
+    var body = gateEl.querySelector('.gate-body');
+    var foot = gateEl.querySelector('.gate-foot');
+
+    body.innerHTML = html;
+    body.classList.remove('quiz-anim');
+    void body.offsetWidth;
+    body.classList.add('quiz-anim');
+
+    foot.className = gateIdx > 0 ? 'quiz-foot gate-foot' : 'quiz-foot only-next gate-foot';
+    foot.innerHTML =
+      (gateIdx > 0 ? '<button type="button" class="quiz-back">← Voltar</button>' : '') +
+      '<button type="button" class="quiz-next"' + (gateRespondida(q) ? '' : ' disabled') + '>' +
+      (ultima ? 'Abrir o WhatsApp →' : 'Próxima →') + '</button>';
+
+    var next = foot.querySelector('.quiz-next');
+    var back = foot.querySelector('.quiz-back');
+    if (back) back.addEventListener('click', function () { gateIdx--; gateRender(); });
+
+    next.addEventListener('click', function () {
+      if (next.disabled) return;
+      if (!ultima) { gateIdx++; gateRender(); return; }
+      gateEnviar();
+      window.open(gateLink(), '_blank', 'noopener');
+      gateFechar();
+    });
+
+    var field = body.querySelector('#gateField');
+    if (field) {
+      field.addEventListener('input', function () {
+        gateAnswers[q.id] = q.type === 'phone' ? (field.value = maskPhone(field.value)) : field.value;
+        next.disabled = !gateRespondida(q);
+      });
+      field.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (!next.disabled) next.click();
+      });
+      try { field.focus({ preventScroll: true }); } catch (e) { /* navegador antigo */ }
+    }
+
+    Array.prototype.forEach.call(body.querySelectorAll('.quiz-opt'), function (btn) {
+      btn.addEventListener('click', function () {
+        var idx = parseInt(btn.getAttribute('data-idx'), 10);
+        gateAnswers[q.id] = q.options[idx].val;
+        Array.prototype.forEach.call(body.querySelectorAll('.quiz-opt'), function (o) {
+          o.classList.toggle('selected', parseInt(o.getAttribute('data-idx'), 10) === idx);
+        });
+        next.disabled = false;
+      });
+    });
+  }
+
+  function gateAbrir() {
+    if (gateEl) return;
+    gateIdx = 0;
+
+    gateEl = document.createElement('div');
+    gateEl.className = 'wa-gate';
+    gateEl.innerHTML =
+      '<div class="wa-gate-card" role="dialog" aria-modal="true" aria-label="Falar no WhatsApp">' +
+      '<button type="button" class="wa-gate-close" aria-label="Fechar">&times;</button>' +
+      '<div class="wa-gate-head">' + iconeWhats() + '<h3>Antes de abrir a conversa</h3></div>' +
+      '<p class="wa-gate-sub">Três informações rápidas, para o time de expansão já chegar sabendo com quem fala.</p>' +
+      '<div class="gate-body"></div><div class="quiz-foot gate-foot"></div>' +
+      '</div>';
+
+    gateEl.addEventListener('click', function (e) {
+      if (e.target === gateEl) gateFechar();
+    });
+    gateEl.querySelector('.wa-gate-close').addEventListener('click', gateFechar);
+    document.addEventListener('keydown', gateEsc);
+
+    document.body.appendChild(gateEl);
+    gateRender();
+  }
+
+  function ligarGate() {
+    ['waFloat', 'ctaWhats'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('click', function (e) {
+        /* Quem já concluiu a candidatura vai direto para a conversa. */
+        if (finished || gateEnviado) return;
+        e.preventDefault();
+        gateAbrir();
+      });
+    });
+  }
+
+  /* ============================================================
    * Init
    * ============================================================ */
   function init() {
@@ -627,9 +858,21 @@
     elBar = document.getElementById('quizBar');
     elBody = document.getElementById('quizBody');
     elFoot = document.getElementById('quizFoot');
+    elStart = document.getElementById('quizStart');
     if (!elCount || !elBar || !elBody || !elFoot) return;
 
-    render('next');
+    var btn = document.getElementById('quizStartBtn');
+    if (btn) btn.addEventListener('click', function () { abrir(true); });
+
+    /* Sem botão de abertura na página, o formulário já entra aberto. */
+    if (!elStart) {
+      abrir(false);
+    } else if (window.location.hash === HASH_INICIO || window.location.hash === HASH_FIM) {
+      /* Link direto para o formulário abre o passo 1 sem exigir o clique. */
+      abrir(true);
+    }
+
+    ligarGate();
     window.addEventListener('pagehide', submitParcial);
   }
 

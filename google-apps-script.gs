@@ -21,7 +21,7 @@ var TIMEZONE = 'America/Sao_Paulo';
 var HEADERS = [
   'Data/Hora', 'Status', 'Classificação', 'Pontos', 'Composição sugerida',
   'Perfil', 'Histórico no mercado', 'Porta pra fora / dentro', 'Capital próprio',
-  'Dedicação e prazo', 'Praça', 'Nome', 'WhatsApp', 'Página de origem'
+  'Praça', 'Nome', 'WhatsApp', 'Página de origem'
 ];
 
 function doPost(e) {
@@ -48,7 +48,6 @@ function doPost(e) {
       data.experiencia || '',
       data.papel || '',
       data.capital || '',
-      data.dedicacao || '',
       data.praca || '',
       data.nome || '',
       data.whatsapp || '',

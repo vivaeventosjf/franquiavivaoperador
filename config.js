@@ -29,4 +29,4 @@ const CRM_URL = '';
 
 /* Quantas praças ainda estão abertas (aparece no hero e no CTA final).
    Deixe 0 para esconder o contador de escassez. */
-const PRACAS_ABERTAS = 47;
+const PRACAS_ABERTAS = 50;
