@@ -685,9 +685,6 @@ section { position: relative; }
 .cta-final h2 .marker { color: var(--laranja); font-weight: 400; letter-spacing: 0; }
 .cta-final p { margin: 22px auto 0; font-size: clamp(16px, 1.7vw, 19px); color: var(--claro-2); max-width: 60ch; line-height: 1.6; }
 .cta-final .hero-cta { justify-content: center; }
-.cta-escassez .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--laranja); }
-.cta-escassez b { color: #fff; }
-.cta-escassez { margin-top: 26px; display: inline-flex; align-items: center; gap: 10px; border: 1px solid rgba(244,119,32,.4); background: rgba(244,119,32,.1); border-radius: 999px; padding: 9px 18px; font-size: 13.5px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: var(--laranja-claro); }
 
 /* ============================================================
    FOOTER

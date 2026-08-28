@@ -114,15 +114,10 @@
   /* ---------- Contador de praças abertas ---------- */
   var pracas = typeof PRACAS_ABERTAS !== 'undefined' ? PRACAS_ABERTAS : 0;
   var elNum = document.getElementById('numPracas');
-  var elEsc = document.getElementById('ctaEscassez');
-  var elCta = document.getElementById('ctaPracas');
 
   if (pracas > 0) {
     if (elNum) elNum.textContent = String(pracas);
-    if (elCta) elCta.textContent = String(pracas);
-    if (elEsc) elEsc.hidden = false;
   } else {
-    if (elEsc) elEsc.remove();
     var cardPracas = elNum ? elNum.closest('.num-card') : null;
     if (cardPracas) cardPracas.remove();
   }
