@@ -432,7 +432,7 @@ section { position: relative; }
   border: 1px solid var(--linha); border-radius: 22px; padding: 26px 30px;
   background: rgba(255,255,255,.035);
 }
-.mapa-img { width: 100%; max-width: 340px; height: auto; margin: 0 auto; }
+.mapa-img { width: 100%; max-width: 380px; height: auto; margin: 0 auto; }
 .mapa-texto .section-tag { margin-bottom: 10px; }
 .mapa-texto h3 { font-size: clamp(21px, 2.5vw, 28px); font-weight: 900; letter-spacing: -.03em; line-height: 1.14; }
 .mapa-texto h3 .marker { color: var(--laranja); font-weight: 400; letter-spacing: 0; }
