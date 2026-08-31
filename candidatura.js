@@ -1,6 +1,6 @@
 /* ============================================================
  * VIVA Eventos · Candidatura de sócio-operador
- * Formulário de 7 etapas que qualifica o lead, sugere a
+ * Formulário de 6 etapas que qualifica o lead, sugere a
  * composição societária e envia para planilha + CRM.
  * Constantes de contato e integração vêm de config.js.
  * ============================================================ */
@@ -111,25 +111,6 @@
           feedback: {
             title: 'Isso é ativo, não currículo.',
             body: 'Cinco anos de praça significam relacionamento com faculdade, comissão e fornecedor. É <span class="hl">o que o dinheiro sozinho não compra</span>.'
-          }
-        }
-      ]
-    },
-    {
-      id: 'papel',
-      type: 'choice',
-      onlyOperador: true,
-      label: 'Você é mais porta pra fora ou porta pra dentro?',
-      hint: 'Porta pra fora é prospecção e fechamento. Porta pra dentro é pós-venda, produção e relacionamento com a turma.',
-      options: [
-        { val: 'Porta pra fora: vendas e fechamento', score: 14 },
-        { val: 'Porta pra dentro: pós-venda e operação', score: 10 },
-        {
-          val: 'Faço as duas coisas',
-          score: 16,
-          feedback: {
-            title: 'Raro e valioso.',
-            body: 'Quem transita nas duas frentes entende a unidade inteira. Isso pesa muito na aprovação.'
           }
         }
       ]
@@ -271,11 +252,11 @@
 
   function classificar() {
     if (ehInvestidor()) return 'Investidor (não operador)';
-    /* Nota máxima possível: 40 + 20 + 16 + 18 = 94 */
+    /* Nota máxima possível: 40 + 20 + 18 = 78 */
     var p = pontos();
-    if (p >= 68) return 'A · Prioridade máxima';
-    if (p >= 51) return 'B · Alta';
-    if (p >= 35) return 'C · Média';
+    if (p >= 56) return 'A · Prioridade máxima';
+    if (p >= 42) return 'B · Alta';
+    if (p >= 29) return 'C · Média';
     return 'D · Fora do perfil prioritário';
   }
 
@@ -289,33 +270,20 @@
       };
     }
 
-    var posVenda = answers.papel === 'Porta pra dentro: pós-venda e operação';
-    var ambas = answers.papel === 'Faço as duas coisas';
     var capitalAlto = answers.capital === 'De R$ 15 mil a R$ 40 mil' ||
       answers.capital === 'Acima de R$ 40 mil';
 
-    if (ambas) {
+    if (capitalAlto) {
       return {
-        chip: 'Operação completa + investidor',
-        titulo: 'Você cobre as duas frentes da unidade.',
-        texto: 'Vendas e pós-venda na mesma cabeça é o perfil mais disputado da expansão. O investidor completa o capital e a VIVA ajuda a montar o time abaixo de você.'
-      };
-    }
-    if (posVenda) {
-      return capitalAlto ? {
-        chip: 'Sócio de pós-venda + gerente de vendas',
-        titulo: 'Você assume a porta pra dentro, com capital próprio.',
-        texto: 'Com o seu capital, a unidade dispensa aporte externo e a VIVA estrutura com você a contratação da frente comercial.'
-      } : {
-        chip: 'Sócio de pós-venda + investidor + gerente de vendas',
-        titulo: 'Você assume a porta pra dentro da unidade.',
-        texto: 'O investidor entra com o capital e a VIVA estrutura com você a contratação da frente comercial.'
+        chip: 'Sócio operador com capital próprio',
+        titulo: 'Você chega com mais poder de negociação.',
+        texto: 'Com a sua entrada de capital dá pra desenhar uma sociedade com participação maior e menos diluição, além da remuneração pela operação.'
       };
     }
     return {
-      chip: 'Sócio de vendas + investidor + gerente de pós-venda',
+      chip: 'Sócio operador + investidor',
       titulo: 'É exatamente a vaga que está aberta.',
-      texto: 'Você assume a frente comercial, o investidor entra com o capital e a VIVA ajuda a montar a gerência de pós-venda da unidade.'
+      texto: 'Você assume a operação da unidade, o investidor entra com o capital e a VIVA ajuda a montar o time abaixo de você.'
     };
   }
 
@@ -582,7 +550,6 @@
       composicao: composicao().chip,
       perfil: answers.perfil || '',
       experiencia: answers.experiencia || '',
-      papel: answers.papel || '',
       capital: answers.capital || '',
       praca: answers.praca || '',
       nome: answers.nome || '',
@@ -706,7 +673,6 @@
       composicao: '',
       perfil: gateAnswers.perfil || '',
       experiencia: '',
-      papel: '',
       capital: '',
       praca: '',
       nome: gateAnswers.nome || '',

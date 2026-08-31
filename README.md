@@ -17,7 +17,7 @@ fora do mercado são aceitos, mas classificados abaixo.
 | `index.html` | A landing inteira (uma página só). |
 | `styles.css` | Todo o visual, incluindo o formulário. |
 | `script.js` | Header, menu mobile, reveal, FAQ, links de contato e contador de praças. |
-| `candidatura.js` | Formulário de 7 etapas + pontuação + composição societária + envio. |
+| `candidatura.js` | Formulário de 6 etapas + pontuação + composição societária + envio. |
 | `config.js` | **Único arquivo que precisa ser editado** para publicar. |
 | `google-apps-script.gs` | Backend que grava as candidaturas numa planilha do Google. |
 | `assets/` | Logo VIVA vetorizada (SVG), PNGs e favicon. |
@@ -46,7 +46,7 @@ Mesma integração da landing de formandos:
 4. Copie a URL que termina em `/exec` e cole em `SHEET_URL` no `config.js`.
 
 Cada linha traz: data, status, classificação, pontos, composição societária
-sugerida, perfil, histórico no mercado, porta pra fora/dentro, capital próprio,
+sugerida, perfil, histórico no mercado, capital próprio,
 praça, nome, WhatsApp e página de origem.
 
 Quem abandona o formulário depois de digitar o WhatsApp é gravado como
@@ -56,7 +56,7 @@ pergunta, praticamente todo abandono vira lead resgatável.
 Leads vindos do botão flutuante do WhatsApp entram com status
 **"WhatsApp (contato direto)"**.
 
-## O formulário (7 perguntas)
+## O formulário (6 perguntas)
 
 Enxuto de propósito: cada pergunta a mais custa conversão, então ficaram só as
 que classificam o lead ou desenham a sociedade. O resto vai para a call de
@@ -77,12 +77,11 @@ lead parcial, com contato utilizável.
 | 3 | Em qual cidade você quer operar? | Checagem no mapa de expansão. |
 | 4 | Qual dessas frases descreve você hoje? | Separa as personas e vale o maior peso da nota. |
 | 5 | Qual o seu histórico no mercado de formaturas? | Tempo de praça e regularidade de fechamento. |
-| 6 | Porta pra fora ou porta pra dentro? | Define qual cadeira da unidade você ocupa. |
-| 7 | Quanto de capital próprio você tem? | Desenha a participação e tranquiliza quem tem pouco. |
+| 6 | Quanto de capital próprio você tem? | Desenha a participação e tranquiliza quem tem pouco. |
 
-Quem responde **"Quero investir, mas não quero operar"** na pergunta 4 pula as
-duas perguntas de operação (5 e 6) e termina em **5 perguntas**, num fluxo
-curto de investidor.
+Quem responde **"Quero investir, mas não quero operar"** na pergunta 4 pula a
+pergunta de histórico no mercado e termina em **5 perguntas**, num fluxo curto
+de investidor.
 
 ### URLs de etapa (para metas de conversão)
 
@@ -116,15 +115,15 @@ sentir falta de alguma, é só reinserir o objeto no array `QUESTIONS`.
 
 ### Como a nota funciona
 
-Cada opção tem um peso em `candidatura.js`. Nota máxima possível: **94**
-(40 perfil + 20 histórico + 16 papel + 18 capital).
+Cada opção tem um peso em `candidatura.js`. Nota máxima possível: **78**
+(40 perfil + 20 histórico + 18 capital).
 
 | Faixa | Classificação | O que significa |
 | --- | --- | --- |
-| ≥ 68 | **A · Prioridade máxima** | Vendedor de formatura/fotografia, experiente, com praça consolidada. |
-| 51–67 | **B · Alta** | Perfil bom, com um ou dois pontos a resolver. |
-| 35–50 | **C · Média** | Perfil aceitável, exige mais conversa. |
-| < 35 | **D · Fora do perfil** | Recebe uma tela final honesta, sem promessa de contato comercial. |
+| ≥ 56 | **A · Prioridade máxima** | Vendedor de formatura/fotografia, experiente, com praça consolidada. |
+| 42–55 | **B · Alta** | Perfil bom, com um ou dois pontos a resolver. |
+| 29–41 | **C · Média** | Perfil aceitável, exige mais conversa. |
+| < 29 | **D · Fora do perfil** | Recebe uma tela final honesta, sem promessa de contato comercial. |
 | n/a | **Investidor** | Fluxo de hunting, direcionado ao modelo não operador. |
 
 Os pesos ficam todos no array `QUESTIONS`: é só alterar o campo `score` de cada

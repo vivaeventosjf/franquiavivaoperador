@@ -20,7 +20,7 @@ var TIMEZONE = 'America/Sao_Paulo';
 
 var HEADERS = [
   'Data/Hora', 'Status', 'Classificação', 'Pontos', 'Composição sugerida',
-  'Perfil', 'Histórico no mercado', 'Porta pra fora / dentro', 'Capital próprio',
+  'Perfil', 'Histórico no mercado', 'Capital próprio',
   'Praça', 'Nome', 'WhatsApp', 'Página de origem'
 ];
 
@@ -46,7 +46,6 @@ function doPost(e) {
       data.composicao || '',
       data.perfil || '',
       data.experiencia || '',
-      data.papel || '',
       data.capital || '',
       data.praca || '',
       data.nome || '',
