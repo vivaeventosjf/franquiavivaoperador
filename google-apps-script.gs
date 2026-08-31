@@ -19,7 +19,7 @@ var SHEET_NAME = 'Candidaturas';
 var TIMEZONE = 'America/Sao_Paulo';
 
 var HEADERS = [
-  'Data/Hora', 'Status', 'Classificação', 'Pontos', 'Composição sugerida',
+  'Data/Hora', 'Status', 'Classificação', 'Pontos',
   'Perfil', 'Histórico no mercado', 'Capital próprio',
   'Praça', 'Nome', 'WhatsApp', 'Página de origem'
 ];
@@ -43,7 +43,6 @@ function doPost(e) {
       data.status || 'Completo',
       data.classificacao || '',
       data.pontos || 0,
-      data.composicao || '',
       data.perfil || '',
       data.experiencia || '',
       data.capital || '',

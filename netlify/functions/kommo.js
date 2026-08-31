@@ -31,7 +31,6 @@ const CAMPOS = [
   { chave: 'experiencia', nome: 'Histórico no mercado', tipo: 'text' },
   { chave: 'capital', nome: 'Capital próprio', tipo: 'text' },
   { chave: 'praca', nome: 'Praça pretendida', tipo: 'text' },
-  { chave: 'composicao', nome: 'Composição sugerida', tipo: 'text' },
   { chave: 'origem', nome: 'Página de origem', tipo: 'text' }
 ];
 
@@ -220,7 +219,6 @@ function montarNota(d) {
     ['Status', d.status],
     ['Classificação', d.classificacao],
     ['Pontos', d.pontos],
-    ['Composição sugerida', d.composicao],
     ['Perfil', d.perfil],
     ['Histórico no mercado', d.experiencia],
     ['Capital próprio', d.capital],

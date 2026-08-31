@@ -17,7 +17,7 @@ fora do mercado são aceitos, mas classificados abaixo.
 | `index.html` | A landing inteira (uma página só). |
 | `styles.css` | Todo o visual, incluindo o formulário. |
 | `script.js` | Header, menu mobile, reveal, FAQ, links de contato e contador de praças. |
-| `candidatura.js` | Formulário de 6 etapas + pontuação + composição societária + envio. |
+| `candidatura.js` | Formulário de 6 etapas + pontuação + classificação + envio. |
 | `config.js` | **Único arquivo que precisa ser editado** para publicar. |
 | `google-apps-script.gs` | Backend que grava as candidaturas numa planilha do Google. |
 | `netlify/functions/kommo.js` | Ponte com o Kommo. Roda no servidor, guarda o token. |
@@ -47,9 +47,9 @@ Mesma integração da landing de formandos:
    (executar como você; acesso: qualquer pessoa).
 4. Copie a URL que termina em `/exec` e cole em `SHEET_URL` no `config.js`.
 
-Cada linha traz: data, status, classificação, pontos, composição societária
-sugerida, perfil, histórico no mercado, capital próprio,
-praça, nome, WhatsApp e página de origem.
+Cada linha traz: data, status, classificação, pontos,
+perfil, histórico no mercado, capital próprio, praça, nome, WhatsApp e página
+de origem.
 
 Quem abandona o formulário depois de digitar o WhatsApp é gravado como
 **"Parcial (abandonou)"** via `sendBeacon`. Como o WhatsApp é a **segunda**
@@ -106,7 +106,6 @@ As respostas do formulário entram de duas formas, de propósito:
 | Histórico no mercado | pergunta 5 |
 | Capital próprio | pergunta 6 |
 | Praça pretendida | pergunta 3 |
-| Composição sugerida | deduzida do capital |
 | Página de origem | URL da landing |
 
 Esses campos são **criados sozinhos** na primeira candidatura que chegar: a
@@ -124,7 +123,6 @@ tempo, sem abrir a aba de campos:
 Status: Completo
 Classificação: A · Prioridade máxima
 Pontos: 72
-Composição sugerida: Sócio operador + investidor
 Perfil: Vendedor(a) de empresa de formatura
 Histórico no mercado: Mais de 5 anos, com carteira e reputação na minha praça
 Capital próprio: De R$ 5 mil a R$ 15 mil
@@ -222,18 +220,16 @@ Cada opção tem um peso em `candidatura.js`. Nota máxima possível: **78**
 Os pesos ficam todos no array `QUESTIONS`: é só alterar o campo `score` de cada
 opção para recalibrar sem mexer no resto do código.
 
-### Composição societária sugerida
+## Tela final
 
-A função `composicao()` em `candidatura.js` deduz, a partir do papel e do capital
-declarados, em qual das combinações oficiais da expansão o candidato se encaixa.
-Isso **não aparece para ele** na tela final (só o título e o texto de contexto),
-mas vai gravado na planilha para o time de expansão:
+A função `composicao()` em `candidatura.js` decide o **texto de encerramento** que
+o candidato lê depois de enviar: quem declarou capital a partir de R$ 15 mil vê
+"Você chega com mais poder de negociação", quem marcou o fluxo de investidor vê
+uma mensagem própria, e o restante vê "É exatamente a vaga que está aberta".
 
-- **Combinação 2**: quem faz vendas e pós-venda, com investidor completando o capital.
-- **Combinação 3**: sócio de vendas + investidor + gerente de pós-venda
-  *(a rota mais comum para o vendedor que a página quer captar)*.
-- **Combinação 4**: sócio de pós-venda com capital próprio + gerente de vendas.
-- **Combinação 5**: sócio de pós-venda + investidor + gerente de vendas.
+Isso é só copy de tela. Não vai para o CRM nem para a planilha, porque com uma
+única variável de entrada (capital) o valor seria uma cópia do campo "Capital
+próprio".
 
 ## Identidade visual
 
