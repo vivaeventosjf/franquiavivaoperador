@@ -91,7 +91,34 @@ Depois de salvar, rode um **novo deploy** para as variáveis valerem.
 
 Cada candidatura vira um **lead** chamado `Operador · Nome · Cidade`, com um
 **contato** vinculado (nome e WhatsApp no campo de telefone) e a etiqueta
-configurada. Todas as respostas entram como **nota** no lead:
+configurada.
+
+As respostas do formulário entram de duas formas, de propósito:
+
+**1. Em campos personalizados**, para o time filtrar e montar relatório:
+
+| Campo no Kommo | Vem de |
+| --- | --- |
+| Status da candidatura | Completo / Parcial / WhatsApp direto |
+| Classificação do lead | A, B, C, D ou Investidor |
+| Pontuação | nota de 0 a 78 (campo numérico) |
+| Perfil declarado | pergunta 4 |
+| Histórico no mercado | pergunta 5 |
+| Capital próprio | pergunta 6 |
+| Praça pretendida | pergunta 3 |
+| Composição sugerida | deduzida do capital |
+| Página de origem | URL da landing |
+
+Esses campos são **criados sozinhos** na primeira candidatura que chegar: a
+função consulta os campos existentes no Kommo, cria os que faltam e guarda os
+ids em memória. Não precisa cadastrar nada na mão.
+
+Se o token não tiver permissão de administrador, a criação falha em silêncio e o
+lead entra assim mesmo, com as respostas na nota. O erro fica no log de funções
+do Netlify.
+
+**2. Como nota no lead**, que é o resumo que o vendedor lê de relance na linha do
+tempo, sem abrir a aba de campos:
 
 ```
 Status: Completo
@@ -106,11 +133,6 @@ Nome: ...
 WhatsApp: ...
 Origem: https://...
 ```
-
-Usar nota em vez de campos personalizados foi decisão de projeto: funciona sem
-ninguém precisar criar campo por campo no Kommo. Se o time preferir os dados em
-campos próprios (para filtrar e fazer relatório), dá para mapear depois — basta
-pegar os ids dos campos na API e ajustar a função.
 
 ### Os três tipos de lead que chegam
 
