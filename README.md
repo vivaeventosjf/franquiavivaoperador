@@ -82,8 +82,33 @@ Em **Site settings → Environment variables**, crie:
 | `KOMMO_SUBDOMAIN` | sim | Só o subdomínio, sem `.kommo.com`. Ex.: `vivaeventos` |
 | `KOMMO_TOKEN` | sim | O token de longa duração do passo 1 |
 | `KOMMO_PIPELINE_ID` | não | Id do funil de destino. Sem isso, cai no funil padrão |
-| `KOMMO_STATUS_ID` | não | Id da etapa dentro do funil |
+| `KOMMO_STATUS_ID` | não | Id da etapa dentro do funil. Sem isso, cai na primeira |
 | `KOMMO_TAG` | não | Etiqueta do lead. Padrão: `Landing operador` |
+| `KOMMO_DEBUG` | não | Temporária. Com `1`, libera a listagem de funis (abaixo) |
+
+### Descobrir os ids de funil e de etapa
+
+O id do **funil** aparece na barra de endereço do Kommo ao abrir o funil:
+`.../leads/pipeline/1234567` — o número é o `KOMMO_PIPELINE_ID`.
+
+O id da **etapa** não aparece na interface. Para descobrir, crie a variável
+`KOMMO_DEBUG` com valor `1`, publique, e abra no navegador:
+
+```
+https://SEU-SITE.netlify.app/.netlify/functions/kommo?funis=1
+```
+
+A resposta lista todos os funis e etapas já com os nomes das variáveis:
+
+```json
+{ "ok": true, "funis": [
+  { "KOMMO_PIPELINE_ID": 1234567, "funil": "Expansão", "principal": true,
+    "etapas": [ { "KOMMO_STATUS_ID": 7654321, "etapa": "Novo lead" } ] }
+]}
+```
+
+Anote os dois números, cadastre nas variáveis e **apague a `KOMMO_DEBUG`**. Sem
+ela a rota devolve 404, para a estrutura do CRM não ficar exposta.
 
 Depois de salvar, rode um **novo deploy** para as variáveis valerem.
 

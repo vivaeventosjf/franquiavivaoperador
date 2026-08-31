@@ -15,6 +15,9 @@
  *   KOMMO_PIPELINE_ID (opcional) id do funil de destino
  *   KOMMO_STATUS_ID   (opcional) id da etapa de destino dentro do funil
  *   KOMMO_TAG         (opcional) etiqueta do lead. Padrão: "Landing operador"
+ *   KOMMO_DEBUG       (temporária) com valor "1", libera
+ *                     GET /.netlify/functions/kommo?funis=1, que lista os ids
+ *                     de funil e de etapa. Apague depois de anotar.
  */
 
 const TAG_PADRAO = 'Landing operador';
@@ -42,7 +45,11 @@ exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: cors(), body: '' };
   }
-  if (event.httpMethod !== 'POST') {
+  const listando = event.httpMethod === 'GET' &&
+    event.queryStringParameters &&
+    event.queryStringParameters.funis === '1';
+
+  if (event.httpMethod !== 'POST' && !listando) {
     return resposta(405, { ok: false, error: 'Use POST' });
   }
 
@@ -54,18 +61,28 @@ exports.handler = async function (event) {
     return resposta(200, { ok: false, error: 'Integração não configurada' });
   }
 
+  const base = `https://${subdominio}.kommo.com/api/v4`;
+  const cabecalho = {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  };
+
+  /* Ajuda para descobrir os ids de funil e etapa.
+     Só responde com KOMMO_DEBUG=1 nas variáveis do Netlify. Depois de anotar
+     os ids, apague a variável para fechar essa porta. */
+  if (listando) {
+    if (process.env.KOMMO_DEBUG !== '1') {
+      return resposta(404, { ok: false, error: 'Não disponível' });
+    }
+    return await listarFunis(base, cabecalho);
+  }
+
   let dados;
   try {
     dados = JSON.parse(event.body || '{}');
   } catch (err) {
     return resposta(400, { ok: false, error: 'JSON inválido' });
   }
-
-  const base = `https://${subdominio}.kommo.com/api/v4`;
-  const cabecalho = {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json'
-  };
 
   const nome = (dados.nome || '').trim() || 'Candidato sem nome';
   const telefone = (dados.whatsapp || '').trim();
@@ -130,6 +147,34 @@ exports.handler = async function (event) {
     return resposta(200, { ok: false, error: String(err) });
   }
 };
+
+/* ============================================================
+ * Funis e etapas
+ * ============================================================ */
+async function listarFunis(base, cabecalho) {
+  try {
+    const r = await fetch(`${base}/leads/pipelines`, { headers: cabecalho });
+    if (!r.ok) {
+      return resposta(200, { ok: false, status: r.status, error: (await r.text()).slice(0, 500) });
+    }
+
+    const dados = await r.json();
+    const funis = ((dados._embedded && dados._embedded.pipelines) || []).map(function (f) {
+      return {
+        KOMMO_PIPELINE_ID: f.id,
+        funil: f.name,
+        principal: !!f.is_main,
+        etapas: ((f._embedded && f._embedded.statuses) || []).map(function (s) {
+          return { KOMMO_STATUS_ID: s.id, etapa: s.name };
+        })
+      };
+    });
+
+    return resposta(200, { ok: true, funis: funis });
+  } catch (err) {
+    return resposta(200, { ok: false, error: String(err) });
+  }
+}
 
 /* ============================================================
  * Campos personalizados
