@@ -560,14 +560,21 @@
 
   function post(url, body) {
     if (!url) return;
+
+    /* A Netlify Function é mesma origem e aceita JSON. O Apps Script exige
+       no-cors com text/plain, senão o preflight derruba o envio. */
+    var mesmaOrigem = url.charAt(0) === '/';
+
     try {
       fetch(url, {
         method: 'POST',
-        mode: 'no-cors',
+        mode: mesmaOrigem ? 'same-origin' : 'no-cors',
         keepalive: true,
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        headers: {
+          'Content-Type': mesmaOrigem ? 'application/json' : 'text/plain;charset=utf-8'
+        },
         body: body
-      });
+      }).catch(function () { /* CRM fora do ar não pode travar a landing */ });
     } catch (e) { /* silencioso: não trava o fluxo */ }
   }
 

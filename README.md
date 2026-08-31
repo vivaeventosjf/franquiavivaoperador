@@ -20,6 +20,8 @@ fora do mercado são aceitos, mas classificados abaixo.
 | `candidatura.js` | Formulário de 6 etapas + pontuação + composição societária + envio. |
 | `config.js` | **Único arquivo que precisa ser editado** para publicar. |
 | `google-apps-script.gs` | Backend que grava as candidaturas numa planilha do Google. |
+| `netlify/functions/kommo.js` | Ponte com o Kommo. Roda no servidor, guarda o token. |
+| `netlify.toml` | Configuração de publicação e de funções no Netlify. |
 | `assets/` | Logo VIVA vetorizada (SVG), PNGs e favicon. |
 
 ## Antes de publicar, edite `config.js`
@@ -27,13 +29,13 @@ fora do mercado são aceitos, mas classificados abaixo.
 ```js
 const WHATS = '5532988677558';   // <- WhatsApp do time de expansão (já preenchido)
 const SHEET_URL = '';            // <- URL /exec do Apps Script (ver abaixo)
-const CRM_URL = '';              // <- webhook do CRM, se houver
+const CRM_URL = '/.netlify/functions/kommo';  // <- ponte com o Kommo
 const PRACAS_ABERTAS = 50;       // <- praças disponíveis (0 esconde a escassez)
 ```
 
 O WhatsApp já está preenchido com o número do time de expansão,
-**(32) 98867-7558**. Enquanto `SHEET_URL` estiver vazio, o formulário funciona
-normalmente na tela, mas a candidatura não é gravada em lugar nenhum.
+**(32) 98867-7558**. O `CRM_URL` aponta para a função do Kommo (ver adiante).
+O `SHEET_URL` é opcional e serve como cópia de segurança em planilha.
 
 ## Receber as candidaturas numa planilha
 
@@ -55,6 +57,75 @@ pergunta, praticamente todo abandono vira lead resgatável.
 
 Leads vindos do botão flutuante do WhatsApp entram com status
 **"WhatsApp (contato direto)"**.
+
+## Integração com o Kommo
+
+O formulário manda cada candidatura para uma **Netlify Function**
+(`netlify/functions/kommo.js`), que cria o lead no Kommo. O token do CRM fica nas
+variáveis de ambiente do Netlify e **nunca chega ao navegador** — se ele
+estivesse no `config.js`, qualquer visitante poderia ler e escrever no CRM da
+VIVA.
+
+### Passo 1 · gerar o token no Kommo
+
+1. No Kommo, vá em **Configurações → Integrações → Criar integração**.
+2. Escolha **Integração privada**, dê um nome (ex.: "Landing operador").
+3. Marque os escopos de **CRM** (leitura e escrita).
+4. Gere um **token de longa duração** e copie.
+
+### Passo 2 · configurar no Netlify
+
+Em **Site settings → Environment variables**, crie:
+
+| Variável | Obrigatória | O que é |
+| --- | --- | --- |
+| `KOMMO_SUBDOMAIN` | sim | Só o subdomínio, sem `.kommo.com`. Ex.: `vivaeventos` |
+| `KOMMO_TOKEN` | sim | O token de longa duração do passo 1 |
+| `KOMMO_PIPELINE_ID` | não | Id do funil de destino. Sem isso, cai no funil padrão |
+| `KOMMO_STATUS_ID` | não | Id da etapa dentro do funil |
+| `KOMMO_TAG` | não | Etiqueta do lead. Padrão: `Landing operador` |
+
+Depois de salvar, rode um **novo deploy** para as variáveis valerem.
+
+### O que chega no Kommo
+
+Cada candidatura vira um **lead** chamado `Operador · Nome · Cidade`, com um
+**contato** vinculado (nome e WhatsApp no campo de telefone) e a etiqueta
+configurada. Todas as respostas entram como **nota** no lead:
+
+```
+Status: Completo
+Classificação: A · Prioridade máxima
+Pontos: 72
+Composição sugerida: Sócio operador + investidor
+Perfil: Vendedor(a) de empresa de formatura
+Histórico no mercado: Mais de 5 anos, com carteira e reputação na minha praça
+Capital próprio: De R$ 5 mil a R$ 15 mil
+Praça: Juiz de Fora, MG
+Nome: ...
+WhatsApp: ...
+Origem: https://...
+```
+
+Usar nota em vez de campos personalizados foi decisão de projeto: funciona sem
+ninguém precisar criar campo por campo no Kommo. Se o time preferir os dados em
+campos próprios (para filtrar e fazer relatório), dá para mapear depois — basta
+pegar os ids dos campos na API e ajustar a função.
+
+### Os três tipos de lead que chegam
+
+| Status | Quando |
+| --- | --- |
+| `Completo` | Terminou as 6 perguntas |
+| `Parcial (abandonou)` | Saiu no meio, mas já tinha digitado o WhatsApp |
+| `WhatsApp (contato direto)` | Veio pelo botão flutuante, respondeu nome, WhatsApp e perfil |
+
+### Se o Kommo estiver fora do ar
+
+A função sempre responde `200` e o envio é feito sem bloquear a interface. Uma
+falha no CRM não trava nem atrasa o formulário para o candidato; o erro fica
+registrado no log de funções do Netlify. Se o `SHEET_URL` também estiver
+configurado, a planilha do Google funciona como cópia de segurança dos leads.
 
 ## O formulário (6 perguntas)
 

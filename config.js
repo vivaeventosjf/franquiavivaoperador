@@ -24,8 +24,10 @@ const FRANQUIAS_URL = 'https://franquias.vivaeventos.com.br/';
    funcionando na tela, mas o lead não é gravado em lugar nenhum). */
 const SHEET_URL = '';
 
-/* Webhook opcional de CRM. Deixe vazio para desativar. */
-const CRM_URL = '';
+/* Ponte com o Kommo (Netlify Function). O token do CRM fica nas variáveis de
+   ambiente do Netlify, nunca aqui. Deixe vazio para desativar o envio.
+   Em ambiente local sem Netlify CLI, isso simplesmente não grava nada. */
+const CRM_URL = '/.netlify/functions/kommo';
 
 /* Quantas praças ainda estão abertas (aparece no hero e no CTA final).
    Deixe 0 para esconder o contador de escassez. */

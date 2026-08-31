@@ -1,0 +1,9 @@
+# VIVA Eventos · configuração de deploy no Netlify
+
+[build]
+  # Site estático: nada para compilar.
+  publish = "."
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
