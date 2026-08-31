@@ -62,7 +62,7 @@ Leads vindos do botão flutuante do WhatsApp entram com status
 
 O formulário manda cada candidatura para uma **Netlify Function**
 (`netlify/functions/kommo.js`), que cria o lead no Kommo. O token do CRM fica nas
-variáveis de ambiente do Netlify e **nunca chega ao navegador** — se ele
+variáveis de ambiente do Netlify e **nunca chega ao navegador**. Se ele
 estivesse no `config.js`, qualquer visitante poderia ler e escrever no CRM da
 VIVA.
 
