@@ -89,7 +89,7 @@ Em **Site settings → Environment variables**, crie:
 ### Descobrir os ids de funil e de etapa
 
 O id do **funil** aparece na barra de endereço do Kommo ao abrir o funil:
-`.../leads/pipeline/1234567` — o número é o `KOMMO_PIPELINE_ID`.
+`.../leads/pipeline/1234567`. O número é o `KOMMO_PIPELINE_ID`.
 
 O id da **etapa** não aparece na interface. Para descobrir, crie a variável
 `KOMMO_DEBUG` com valor `1`, publique, e abra no navegador:
