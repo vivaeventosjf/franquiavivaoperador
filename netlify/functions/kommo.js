@@ -13,7 +13,11 @@
  *   KOMMO_SUBDOMAIN   ex.: vivaeventos          (sem .kommo.com)
  *   KOMMO_TOKEN       token de longa duração da integração privada
  *   KOMMO_PIPELINE_ID (opcional) id do funil de destino
- *   KOMMO_STATUS_ID   (opcional) id da etapa de destino dentro do funil
+ *   KOMMO_STATUS_ID   (opcional) id da etapa. Se não souber o número, use
+ *                     KOMMO_STATUS_NAME
+ *   KOMMO_STATUS_NAME (opcional) nome da etapa de destino, ex.: "NOVOS". A
+ *                     função procura a etapa pelo nome dentro do funil e usa o
+ *                     id dela. Ignora acentos e maiúsculas. Padrão: "NOVOS"
  *   KOMMO_TAG         (opcional) etiqueta do lead. Padrão: "Landing operador"
  *   KOMMO_DEBUG       (temporária) com valor "1", libera
  *                     GET /.netlify/functions/kommo?funis=1, que lista os ids
@@ -37,9 +41,10 @@ const CAMPOS = [
   { chave: 'origem', nome: 'Página de origem', tipo: 'text' }
 ];
 
-/* Sobrevive entre invocações quentes da função: evita bater na API de campos
-   a cada candidatura. */
+/* Sobrevivem entre invocações quentes da função: evitam bater na API a cada
+   candidatura. */
 let cacheCampos = null;
+let cacheEtapa;
 
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -109,8 +114,13 @@ exports.handler = async function (event) {
     const valores = montarValores(dados, idsCampos);
     if (valores.length) lead.custom_fields_values = valores;
 
-    if (process.env.KOMMO_PIPELINE_ID) lead.pipeline_id = Number(process.env.KOMMO_PIPELINE_ID);
-    if (process.env.KOMMO_STATUS_ID) lead.status_id = Number(process.env.KOMMO_STATUS_ID);
+    const funilId = process.env.KOMMO_PIPELINE_ID
+      ? Number(process.env.KOMMO_PIPELINE_ID)
+      : null;
+    if (funilId) lead.pipeline_id = funilId;
+
+    const etapaId = await descobrirEtapa(base, cabecalho, funilId);
+    if (etapaId) lead.status_id = etapaId;
 
     const criacao = await fetch(`${base}/leads/complex`, {
       method: 'POST',
@@ -151,6 +161,53 @@ exports.handler = async function (event) {
 /* ============================================================
  * Funis e etapas
  * ============================================================ */
+
+/* Resolve a etapa de destino. Prioridade:
+   1. KOMMO_STATUS_ID, se informado
+   2. a etapa cujo nome bate com KOMMO_STATUS_NAME (padrão "NOVOS")
+   3. nenhuma, e o Kommo usa a primeira etapa do funil */
+async function descobrirEtapa(base, cabecalho, funilId) {
+  if (process.env.KOMMO_STATUS_ID) return Number(process.env.KOMMO_STATUS_ID);
+  if (cacheEtapa !== undefined) return cacheEtapa;
+  if (!funilId) return (cacheEtapa = null);
+
+  const alvo = normalizar(process.env.KOMMO_STATUS_NAME || 'NOVOS');
+
+  try {
+    const r = await fetch(`${base}/leads/pipelines/${funilId}`, { headers: cabecalho });
+    if (!r.ok) {
+      console.error('Não consegui ler o funil:', r.status);
+      return (cacheEtapa = null);
+    }
+
+    const funil = await r.json();
+    const etapas = (funil._embedded && funil._embedded.statuses) || [];
+
+    const achada = etapas.find(function (e) {
+      return normalizar(e.name).indexOf(alvo) !== -1;
+    });
+
+    if (!achada) {
+      console.error('Etapa "' + alvo + '" não encontrada no funil ' + funilId);
+      return (cacheEtapa = null);
+    }
+
+    console.log('Etapa de destino:', achada.name, achada.id);
+    return (cacheEtapa = achada.id);
+  } catch (err) {
+    console.error('Erro ao procurar a etapa:', err);
+    return (cacheEtapa = null);
+  }
+}
+
+/* Compara nomes sem depender de acento, caixa ou numeração ("1 | NOVOS [LEAD]"). */
+function normalizar(texto) {
+  return String(texto)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .trim();
+}
 async function listarFunis(base, cabecalho) {
   try {
     const r = await fetch(`${base}/leads/pipelines`, { headers: cabecalho });

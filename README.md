@@ -82,23 +82,33 @@ Em **Site settings → Environment variables**, crie:
 | `KOMMO_SUBDOMAIN` | sim | Só o subdomínio, sem `.kommo.com`. Ex.: `vivaeventos` |
 | `KOMMO_TOKEN` | sim | O token de longa duração do passo 1 |
 | `KOMMO_PIPELINE_ID` | não | Id do funil de destino. Sem isso, cai no funil padrão |
-| `KOMMO_STATUS_ID` | não | Id da etapa dentro do funil. Sem isso, cai na primeira |
+| `KOMMO_STATUS_ID` | não | Id da etapa. Se não souber o número, use a variável abaixo |
+| `KOMMO_STATUS_NAME` | não | Nome da etapa de destino. Padrão: `NOVOS` |
 | `KOMMO_TAG` | não | Etiqueta do lead. Padrão: `Landing operador` |
 | `KOMMO_DEBUG` | não | Temporária. Com `1`, libera a listagem de funis (abaixo) |
 
-### Descobrir os ids de funil e de etapa
+### Escolher o funil e a etapa
 
 O id do **funil** aparece na barra de endereço do Kommo ao abrir o funil:
 `.../leads/pipeline/1234567`. O número é o `KOMMO_PIPELINE_ID`.
 
-O id da **etapa** não aparece na interface. Para descobrir, crie a variável
+O id da **etapa** não aparece na interface, e por isso a função aceita o **nome**
+em `KOMMO_STATUS_NAME`. Ela lê as etapas do funil, acha a que bate com esse nome
+e usa o id. A comparação ignora acento, caixa e a numeração do Kommo, então
+`NOVOS` encontra `1 | NOVOS [LEAD]`. O padrão já é `NOVOS`, então na maioria dos
+casos não precisa cadastrar nada.
+
+Se a etapa não for encontrada, o lead entra na primeira etapa do funil e o aviso
+fica no log de funções.
+
+Se preferir cravar o número, a variável `KOMMO_DEBUG` com valor `1` libera
 `KOMMO_DEBUG` com valor `1`, publique, e abra no navegador:
 
 ```
 https://SEU-SITE.netlify.app/.netlify/functions/kommo?funis=1
 ```
 
-A resposta lista todos os funis e etapas já com os nomes das variáveis:
+que lista todos os funis e etapas já com os nomes das variáveis:
 
 ```json
 { "ok": true, "funis": [
