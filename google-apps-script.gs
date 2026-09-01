@@ -21,7 +21,9 @@ var TIMEZONE = 'America/Sao_Paulo';
 var HEADERS = [
   'Data/Hora', 'Status', 'Classificação', 'Pontos',
   'Perfil', 'Histórico no mercado', 'Capital próprio',
-  'Praça', 'Nome', 'WhatsApp', 'Página de origem'
+  'Praça', 'Nome', 'WhatsApp', 'URL onde converteu',
+  'UTM source', 'UTM medium', 'UTM campaign', 'UTM content', 'UTM term',
+  'gclid', 'fbclid', 'Referrer'
 ];
 
 function doPost(e) {
@@ -49,7 +51,15 @@ function doPost(e) {
       data.praca || '',
       data.nome || '',
       data.whatsapp || '',
-      data.origem || ''
+      data.origem || '',
+      data.utm_source || '',
+      data.utm_medium || '',
+      data.utm_campaign || '',
+      data.utm_content || '',
+      data.utm_term || '',
+      data.gclid || '',
+      data.fbclid || '',
+      data.referrer || ''
     ]);
 
     return ContentService

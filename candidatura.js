@@ -197,6 +197,47 @@
 
   function ehInvestidor() { return answers.perfil === P_INVEST; }
 
+  /* ============================================================
+   * Rastreamento de origem
+   * Os parâmetros vêm na URL do anúncio e são guardados na sessão, para
+   * sobreviverem à troca de hash (#formulario, #obrigado) e a qualquer
+   * navegação interna antes do envio.
+   * ============================================================ */
+  var UTM_CHAVES = [
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term',
+    'gclid', 'fbclid'
+  ];
+
+  function rastreamento() {
+    var guardado = {};
+    try {
+      guardado = JSON.parse(sessionStorage.getItem('viva_rastreio') || '{}');
+    } catch (e) {
+      guardado = {};
+    }
+
+    try {
+      var params = new URLSearchParams(window.location.search);
+      UTM_CHAVES.forEach(function (chave) {
+        var valor = params.get(chave);
+        if (valor) guardado[chave] = valor.slice(0, 200);
+      });
+    } catch (e) { /* navegador antigo: segue com o que já tinha */ }
+
+    if (!guardado.landing) {
+      guardado.landing = window.location.href.split('#')[0];
+    }
+    if (!guardado.referrer && document.referrer) {
+      guardado.referrer = document.referrer.slice(0, 300);
+    }
+
+    try {
+      sessionStorage.setItem('viva_rastreio', JSON.stringify(guardado));
+    } catch (e) { /* aba anônima com storage bloqueado */ }
+
+    return guardado;
+  }
+
   /* Quem só quer investir não responde as perguntas de operação. */
   function activeQuestions() {
     if (!ehInvestidor()) return QUESTIONS;
@@ -543,6 +584,8 @@
   var enviado = false;
 
   function payload(status) {
+    var rastreio = rastreamento();
+
     return {
       status: status,
       classificacao: classificar(),
@@ -553,7 +596,15 @@
       praca: answers.praca || '',
       nome: answers.nome || '',
       whatsapp: answers.whatsapp || '',
-      origem: window.location.href
+      origem: rastreio.landing || window.location.href,
+      referrer: rastreio.referrer || '',
+      utm_source: rastreio.utm_source || '',
+      utm_medium: rastreio.utm_medium || '',
+      utm_campaign: rastreio.utm_campaign || '',
+      utm_content: rastreio.utm_content || '',
+      utm_term: rastreio.utm_term || '',
+      gclid: rastreio.gclid || '',
+      fbclid: rastreio.fbclid || ''
     };
   }
 
@@ -672,6 +723,7 @@
     if (gateEnviado) return;
     gateEnviado = true;
 
+    var rastreio = rastreamento();
     var body = JSON.stringify({
       status: 'WhatsApp (contato direto)',
       classificacao: 'Contato via WhatsApp',
@@ -682,7 +734,15 @@
       praca: '',
       nome: gateAnswers.nome || '',
       whatsapp: gateAnswers.whatsapp || '',
-      origem: window.location.href
+      origem: rastreio.landing || window.location.href,
+      referrer: rastreio.referrer || '',
+      utm_source: rastreio.utm_source || '',
+      utm_medium: rastreio.utm_medium || '',
+      utm_campaign: rastreio.utm_campaign || '',
+      utm_content: rastreio.utm_content || '',
+      utm_term: rastreio.utm_term || '',
+      gclid: rastreio.gclid || '',
+      fbclid: rastreio.fbclid || ''
     });
     post(typeof SHEET_URL !== 'undefined' ? SHEET_URL : '', body);
     post(typeof CRM_URL !== 'undefined' ? CRM_URL : '', body);
@@ -843,6 +903,7 @@
       abrir(true);
     }
 
+    rastreamento();
     ligarGate();
     window.addEventListener('pagehide', submitParcial);
   }

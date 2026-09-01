@@ -38,7 +38,13 @@ const CAMPOS = [
   { chave: 'experiencia', nome: 'Histórico no mercado', tipo: 'text' },
   { chave: 'capital', nome: 'Capital próprio', tipo: 'text' },
   { chave: 'praca', nome: 'Praça pretendida', tipo: 'text' },
-  { chave: 'origem', nome: 'Página de origem', tipo: 'text' }
+
+  /* Estes quatro já existem na conta da VIVA. A função procura por nome, então
+     ela reaproveita os campos do time em vez de criar duplicados. */
+  { chave: 'origem', nome: 'URL onde converteu', tipo: 'text' },
+  { chave: 'utm_source', nome: 'UTM source', tipo: 'text' },
+  { chave: 'utm_medium', nome: 'UTM medium', tipo: 'text' },
+  { chave: 'utm_campaign', nome: 'UTM campaign', tipo: 'text' }
 ];
 
 /* Sobrevivem entre invocações quentes da função: evitam bater na API a cada
@@ -327,7 +333,15 @@ function montarNota(d) {
     ['Praça', d.praca],
     ['Nome', d.nome],
     ['WhatsApp', d.whatsapp],
-    ['Origem', d.origem]
+    ['URL onde converteu', d.origem],
+    ['Veio de', d.referrer],
+    ['utm_source', d.utm_source],
+    ['utm_medium', d.utm_medium],
+    ['utm_campaign', d.utm_campaign],
+    ['utm_content', d.utm_content],
+    ['utm_term', d.utm_term],
+    ['gclid', d.gclid],
+    ['fbclid', d.fbclid]
   ];
 
   return linhas

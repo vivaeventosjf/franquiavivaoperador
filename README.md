@@ -48,8 +48,8 @@ Mesma integração da landing de formandos:
 4. Copie a URL que termina em `/exec` e cole em `SHEET_URL` no `config.js`.
 
 Cada linha traz: data, status, classificação, pontos,
-perfil, histórico no mercado, capital próprio, praça, nome, WhatsApp e página
-de origem.
+perfil, histórico no mercado, capital próprio, praça, nome, WhatsApp, URL onde
+converteu, os cinco UTMs, gclid, fbclid e referrer.
 
 Quem abandona o formulário depois de digitar o WhatsApp é gravado como
 **"Parcial (abandonou)"** via `sendBeacon`. Como o WhatsApp é a **segunda**
@@ -141,11 +141,19 @@ As respostas do formulário entram de duas formas, de propósito:
 | Histórico no mercado | pergunta 5 |
 | Capital próprio | pergunta 6 |
 | Praça pretendida | pergunta 3 |
-| Página de origem | URL da landing |
+| URL onde converteu | URL da landing, com a query string do anúncio |
+| UTM source | `utm_source` da URL |
+| UTM medium | `utm_medium` da URL |
+| UTM campaign | `utm_campaign` da URL |
 
 Esses campos são **criados sozinhos** na primeira candidatura que chegar: a
 função consulta os campos existentes no Kommo, cria os que faltam e guarda os
 ids em memória. Não precisa cadastrar nada na mão.
+
+Como a busca é **pelo nome**, os campos que a conta da VIVA já tinha
+(`URL onde converteu`, `UTM source`, `UTM medium`, `UTM campaign`) são
+reaproveitados em vez de duplicados. Se alguém renomear um deles no Kommo, a
+função deixa de encontrá-lo e cria outro com o nome antigo.
 
 Se o token não tiver permissão de administrador, a criação falha em silêncio e o
 lead entra assim mesmo, com as respostas na nota. O erro fica no log de funções
@@ -166,6 +174,32 @@ Nome: ...
 WhatsApp: ...
 Origem: https://...
 ```
+
+### Rastreamento de origem (UTMs)
+
+O Kommo não captura UTM sozinho: quem precisa ler os parâmetros da URL e mandar
+junto é a landing. É o que `candidatura.js` faz.
+
+Ao abrir a página, ele lê da query string e guarda na sessão do navegador:
+
+`utm_source` · `utm_medium` · `utm_campaign` · `utm_content` · `utm_term` ·
+`gclid` · `fbclid`
+
+Guardar na sessão é o que garante que o dado sobreviva até o envio, já que o
+formulário troca a URL para `#formulario` e `#obrigado` no meio do caminho.
+
+Basta então marcar os anúncios normalmente:
+
+```
+https://vivaoperador.netlify.app/?utm_source=meta&utm_medium=cpc&utm_campaign=operador-set
+```
+
+Três dos parâmetros caem em campos próprios no Kommo (source, medium, campaign)
+e **todos** aparecem na nota do lead, inclusive `utm_content`, `utm_term`,
+`gclid`, `fbclid` e o referrer.
+
+O campo `URL onde converteu` guarda a URL completa com a query string, então
+mesmo um parâmetro que não tenha campo dedicado fica registrado ali.
 
 ### Os três tipos de lead que chegam
 
