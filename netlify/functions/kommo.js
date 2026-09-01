@@ -106,14 +106,7 @@ exports.handler = async function (event) {
       name: `Operador · ${nome}${praca ? ' · ' + praca : ''}`,
       _embedded: {
         tags: [{ name: process.env.KOMMO_TAG || TAG_PADRAO }],
-        contacts: [
-          {
-            first_name: nome,
-            custom_fields_values: telefone
-              ? [{ field_code: 'PHONE', values: [{ value: telefone, enum_code: 'WORK' }] }]
-              : undefined
-          }
-        ]
+        contacts: [montarContato(nome, telefone)]
       }
     };
 
@@ -141,9 +134,20 @@ exports.handler = async function (event) {
     }
 
     const criado = JSON.parse(corpo);
-    const leadId = Array.isArray(criado) && criado[0] && criado[0].id;
+    const primeiro = Array.isArray(criado) ? criado[0] : null;
+    const leadId = primeiro && primeiro.id;
     if (!leadId) {
       return resposta(200, { ok: true, aviso: 'Lead criado, mas sem id na resposta' });
+    }
+
+    let contatoId = null;
+    const contatos = (primeiro._embedded && primeiro._embedded.contacts) || [];
+    if (contatos.length) contatoId = contatos[0].id;
+
+    /* Se o Kommo não vinculou o contato junto com o lead, cria e vincula
+       separadamente. Sem isso o card fica sem nome e sem telefone. */
+    if (!contatoId) {
+      contatoId = await criarContato(base, cabecalho, leadId, nome, telefone);
     }
 
     // A nota repete as respostas em texto corrido: é o resumo que o vendedor lê
@@ -157,12 +161,69 @@ exports.handler = async function (event) {
       console.error('Nota não gravada:', nota.status, await nota.text());
     }
 
-    return resposta(200, { ok: true, lead_id: leadId, campos: Object.keys(idsCampos).length });
+    return resposta(200, {
+      ok: true,
+      lead_id: leadId,
+      contato_id: contatoId,
+      campos: Object.keys(idsCampos).length
+    });
   } catch (err) {
     console.error('Falha ao falar com o Kommo:', err);
     return resposta(200, { ok: false, error: String(err) });
   }
 };
+
+/* ============================================================
+ * Contato
+ * ============================================================ */
+function montarContato(nome, telefone) {
+  /* O Kommo aceita "name" (nome completo) e "first_name". Mandar os dois evita
+     depender de qual deles a versão da API prioriza. */
+  const contato = { name: nome, first_name: nome };
+
+  if (telefone) {
+    contato.custom_fields_values = [
+      { field_code: 'PHONE', values: [{ value: telefone, enum_code: 'WORK' }] }
+    ];
+  }
+
+  return contato;
+}
+
+async function criarContato(base, cabecalho, leadId, nome, telefone) {
+  try {
+    const r = await fetch(`${base}/contacts`, {
+      method: 'POST',
+      headers: cabecalho,
+      body: JSON.stringify([montarContato(nome, telefone)])
+    });
+
+    if (!r.ok) {
+      console.error('Contato não criado:', r.status, await r.text());
+      return null;
+    }
+
+    const dados = await r.json();
+    const lista = (dados._embedded && dados._embedded.contacts) || [];
+    const contatoId = lista[0] && lista[0].id;
+    if (!contatoId) return null;
+
+    const vinculo = await fetch(`${base}/leads/${leadId}/link`, {
+      method: 'POST',
+      headers: cabecalho,
+      body: JSON.stringify([{ to_entity_id: contatoId, to_entity_type: 'contacts' }])
+    });
+
+    if (!vinculo.ok) {
+      console.error('Contato não vinculado ao lead:', vinculo.status, await vinculo.text());
+    }
+
+    return contatoId;
+  } catch (err) {
+    console.error('Erro ao criar contato:', err);
+    return null;
+  }
+}
 
 /* ============================================================
  * Funis e etapas
