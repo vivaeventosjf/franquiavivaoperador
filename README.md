@@ -175,6 +175,28 @@ WhatsApp: ...
 Origem: https://...
 ```
 
+### Meta Pixel
+
+O pixel `1256090053167879` está instalado no `<head>` do `index.html`. Além do
+`PageView` padrão, a landing dispara três eventos por conta própria, que já
+estavam preparados em `candidatura.js`:
+
+| Evento | Quando dispara |
+| --- | --- |
+| `PageView` | Abertura da página |
+| `InitiateCheckout` | Clicou em "Começar minha candidatura" e o formulário abriu |
+| `Lead` | Concluiu a candidatura |
+| `Contact` | Enviou nome, WhatsApp e perfil pelo botão flutuante do WhatsApp |
+
+Todas as chamadas estão embrulhadas em `typeof fbq === 'function'`, então a
+página continua funcionando se o pixel for bloqueado por adblock ou removido.
+
+Para otimizar campanha, use o **`Lead`** como evento de conversão. Ele marca a
+candidatura completa, não só o clique no botão.
+
+As URLs `#formulario` e `#obrigado` continuam disponíveis para quem preferir
+configurar conversão por URL, no GA4 ou no próprio Meta.
+
 ### Rastreamento de origem (UTMs)
 
 O Kommo não captura UTM sozinho: quem precisa ler os parâmetros da URL e mandar
