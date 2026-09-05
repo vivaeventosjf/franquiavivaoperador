@@ -19,6 +19,8 @@
  *                     função procura a etapa pelo nome dentro do funil e usa o
  *                     id dela. Ignora acentos e maiúsculas. Padrão: "NOVOS"
  *   KOMMO_TAG         (opcional) etiqueta do lead. Padrão: "Landing operador"
+ *   KOMMO_ORIGEM      (opcional) opção do campo "Origem do lead". Precisa
+ *                     existir na lista do Kommo. Padrão: "Tráfego"
  *   KOMMO_DEBUG       (temporária) com valor "1", libera
  *                     GET /.netlify/functions/kommo?funis=1, que lista os ids
  *                     de funil e de etapa. Apague depois de anotar.
@@ -38,6 +40,16 @@ const CAMPOS = [
   { chave: 'experiencia', nome: 'Histórico no mercado', tipo: 'text' },
   { chave: 'capital', nome: 'Capital próprio', tipo: 'text' },
   { chave: 'praca', nome: 'Praça pretendida', tipo: 'text' },
+
+  /* Derivados da praça e do WhatsApp, para preencher os campos que o time já
+     usa no CRM. */
+  { chave: 'cidade', nome: 'Cidade', tipo: 'text' },
+  { chave: 'estado', nome: 'Estado', tipo: 'text' },
+  { chave: 'telefone', nome: 'Telefone', tipo: 'text' },
+
+  /* Campo de seleção. Nunca é criado pela função: sem as opções cadastradas
+     um "select" novo nasceria vazio e inútil. Só é usado se já existir. */
+  { chave: 'origem_lead', nome: 'Origem do lead', tipo: 'select', soExistente: true },
 
   /* Estes quatro já existem na conta da VIVA. A função procura por nome, então
      ela reaproveita os campos do time em vez de criar duplicados. */
@@ -75,7 +87,9 @@ exports.handler = async function (event) {
   const base = `https://${subdominio}.kommo.com/api/v4`;
   const cabecalho = {
     Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    /* O charset é explícito de propósito: sem ele, alguns servidores assumem
+       latin-1 e acentos viram "?" no CRM. */
+    'Content-Type': 'application/json; charset=utf-8'
   };
 
   /* Ajuda para descobrir os ids de funil e etapa.
@@ -90,7 +104,12 @@ exports.handler = async function (event) {
 
   let dados;
   try {
-    dados = JSON.parse(event.body || '{}');
+    /* O sendBeacon do lead parcial manda um Blob, e o Netlify às vezes entrega
+       esse corpo em base64. Decodificar como UTF-8 preserva a acentuação. */
+    var cru = event.isBase64Encoded
+      ? Buffer.from(event.body || '', 'base64').toString('utf8')
+      : (event.body || '');
+    dados = JSON.parse(cru || '{}');
   } catch (err) {
     return resposta(400, { ok: false, error: 'JSON inválido' });
   }
@@ -98,6 +117,14 @@ exports.handler = async function (event) {
   const nome = (dados.nome || '').trim() || 'Candidato sem nome';
   const telefone = (dados.whatsapp || '').trim();
   const praca = (dados.praca || '').trim();
+
+  /* Campos derivados: o formulário pede a praça em texto livre e o WhatsApp,
+     e o CRM tem colunas próprias para cidade, estado, telefone e origem. */
+  const local = separarLocal(praca);
+  dados.cidade = dados.cidade || local.cidade;
+  dados.estado = dados.estado || local.estado;
+  dados.telefone = dados.telefone || telefone;
+  dados.origem_lead = dados.origem_lead || process.env.KOMMO_ORIGEM || 'Tráfego';
 
   try {
     const idsCampos = await garantirCampos(base, cabecalho);
@@ -172,6 +199,66 @@ exports.handler = async function (event) {
     return resposta(200, { ok: false, error: String(err) });
   }
 };
+
+/* ============================================================
+ * Cidade e estado
+ * A pergunta do formulário é texto livre ("Em qual cidade você quer operar?"),
+ * então aqui a gente tenta separar em duas colunas para o CRM.
+ * ============================================================ */
+const UFS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE',
+  'TO'
+];
+
+const ESTADOS = {
+  ACRE: 'AC', ALAGOAS: 'AL', AMAPA: 'AP', AMAZONAS: 'AM', BAHIA: 'BA',
+  CEARA: 'CE', 'DISTRITO FEDERAL': 'DF', 'ESPIRITO SANTO': 'ES', GOIAS: 'GO',
+  MARANHAO: 'MA', 'MATO GROSSO': 'MT', 'MATO GROSSO DO SUL': 'MS',
+  'MINAS GERAIS': 'MG', PARA: 'PA', PARAIBA: 'PB', PARANA: 'PR',
+  PERNAMBUCO: 'PE', PIAUI: 'PI', 'RIO DE JANEIRO': 'RJ',
+  'RIO GRANDE DO NORTE': 'RN', 'RIO GRANDE DO SUL': 'RS', RONDONIA: 'RO',
+  RORAIMA: 'RR', 'SANTA CATARINA': 'SC', 'SAO PAULO': 'SP', SERGIPE: 'SE',
+  TOCANTINS: 'TO'
+};
+
+function separarLocal(praca) {
+  const vazio = { cidade: '', estado: '' };
+  if (!praca) return vazio;
+
+  /* Separadores usuais: "Juiz de Fora, MG", "Juiz de Fora - MG",
+     "Juiz de Fora / MG", "Juiz de Fora | MG". */
+  const partes = String(praca).split(/[,\/|]|\s-\s/);
+
+  if (partes.length > 1) {
+    const fim = partes.pop().trim();
+    const cidade = partes.join(', ').trim();
+    const uf = paraUF(fim);
+    if (uf) return { cidade: cidade, estado: uf };
+    /* Não reconheceu o estado: devolve tudo como cidade, sem inventar. */
+    return { cidade: String(praca).trim(), estado: '' };
+  }
+
+  /* Sem separador: tenta uma sigla solta no fim, como "Juiz de Fora MG". */
+  const texto = String(praca).trim();
+  const ultima = texto.split(/\s+/).pop();
+  const uf = ultima && ultima.length === 2 ? paraUF(ultima) : '';
+
+  if (uf) {
+    return {
+      cidade: texto.slice(0, texto.length - ultima.length).trim(),
+      estado: uf
+    };
+  }
+
+  return { cidade: texto, estado: '' };
+}
+
+function paraUF(texto) {
+  const limpo = normalizar(texto).replace(/[^A-Z ]/g, '').trim();
+  if (limpo.length === 2 && UFS.indexOf(limpo) !== -1) return limpo;
+  return ESTADOS[limpo] || '';
+}
 
 /* ============================================================
  * Contato
@@ -315,7 +402,16 @@ async function garantirCampos(base, cabecalho) {
       const lista = (dados._embedded && dados._embedded.custom_fields) || [];
       lista.forEach(function (campo) {
         const achado = CAMPOS.find(function (c) { return c.nome === campo.name; });
-        if (achado) mapa[achado.chave] = campo.id;
+        /* Guarda o tipo que o campo realmente tem no Kommo. Campos antigos do
+           time podem ser "multitext" (o formato de telefone e e-mail), que
+           exige enum_code no valor. */
+        if (achado) {
+          mapa[achado.chave] = {
+            id: campo.id,
+            tipo: campo.type,
+            enums: campo.enums || null
+          };
+        }
       });
     } else if (r.status !== 204) {
       console.error('Não consegui listar os campos:', r.status);
@@ -324,7 +420,9 @@ async function garantirCampos(base, cabecalho) {
     console.error('Erro ao listar campos:', err);
   }
 
-  const faltando = CAMPOS.filter(function (c) { return !mapa[c.chave]; });
+  const faltando = CAMPOS.filter(function (c) {
+    return !mapa[c.chave] && !c.soExistente;
+  });
 
   if (faltando.length) {
     try {
@@ -341,7 +439,7 @@ async function garantirCampos(base, cabecalho) {
         const criados = (dados._embedded && dados._embedded.custom_fields) || [];
         criados.forEach(function (campo) {
           const achado = CAMPOS.find(function (c) { return c.nome === campo.name; });
-          if (achado) mapa[achado.chave] = campo.id;
+          if (achado) mapa[achado.chave] = { id: campo.id, tipo: campo.type };
         });
       } else {
         // Sem permissão de admin, por exemplo. O lead continua entrando,
@@ -361,8 +459,8 @@ function montarValores(dados, idsCampos) {
   const valores = [];
 
   CAMPOS.forEach(function (campo) {
-    const id = idsCampos[campo.chave];
-    if (!id) return;
+    const info = idsCampos[campo.chave];
+    if (!info) return;
 
     let valor = dados[campo.chave];
     if (valor === undefined || valor === null || valor === '') return;
@@ -374,7 +472,26 @@ function montarValores(dados, idsCampos) {
       valor = String(valor).slice(0, 250);
     }
 
-    valores.push({ field_id: id, values: [{ value: valor }] });
+    let item;
+
+    if (info.tipo === 'select' || info.tipo === 'radiobutton') {
+      /* Seleção: o Kommo espera o id da opção, não o texto. */
+      const opcao = (info.enums || []).find(function (e) {
+        return normalizar(e.value) === normalizar(valor);
+      });
+      if (!opcao) {
+        console.error('Opção "' + valor + '" não existe no campo ' + campo.nome);
+        return;
+      }
+      item = { enum_id: opcao.id };
+    } else if (info.tipo === 'multitext') {
+      /* Campo do tipo telefone/e-mail exige o enum junto do valor. */
+      item = { value: valor, enum_code: 'WORK' };
+    } else {
+      item = { value: valor };
+    }
+
+    valores.push({ field_id: info.id, values: [item] });
   });
 
   return valores;
@@ -392,6 +509,8 @@ function montarNota(d) {
     ['Histórico no mercado', d.experiencia],
     ['Capital próprio', d.capital],
     ['Praça', d.praca],
+    ['Cidade', d.cidade],
+    ['Estado', d.estado],
     ['Nome', d.nome],
     ['WhatsApp', d.whatsapp],
     ['URL onde converteu', d.origem],
@@ -425,7 +544,7 @@ function cors() {
 function resposta(statusCode, corpo) {
   return {
     statusCode,
-    headers: Object.assign({ 'Content-Type': 'application/json' }, cors()),
+    headers: Object.assign({ 'Content-Type': 'application/json; charset=utf-8' }, cors()),
     body: JSON.stringify(corpo)
   };
 }

@@ -621,7 +621,9 @@
         mode: mesmaOrigem ? 'same-origin' : 'no-cors',
         keepalive: true,
         headers: {
-          'Content-Type': mesmaOrigem ? 'application/json' : 'text/plain;charset=utf-8'
+          'Content-Type': mesmaOrigem
+            ? 'application/json; charset=utf-8'
+            : 'text/plain;charset=utf-8'
         },
         body: body
       }).catch(function () { /* CRM fora do ar não pode travar a landing */ });

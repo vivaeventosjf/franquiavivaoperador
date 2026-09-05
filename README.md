@@ -85,6 +85,7 @@ Em **Site settings → Environment variables**, crie:
 | `KOMMO_STATUS_ID` | não | Id da etapa. Se não souber o número, use a variável abaixo |
 | `KOMMO_STATUS_NAME` | não | Nome da etapa de destino. Padrão: `NOVOS` |
 | `KOMMO_TAG` | não | Etiqueta do lead. Padrão: `Landing operador` |
+| `KOMMO_ORIGEM` | não | Opção do campo "Origem do lead". Padrão: `Tráfego` |
 | `KOMMO_DEBUG` | não | Temporária. Com `1`, libera a listagem de funis (abaixo) |
 
 ### Escolher o funil e a etapa
@@ -140,7 +141,11 @@ As respostas do formulário entram de duas formas, de propósito:
 | Perfil declarado | pergunta 4 |
 | Histórico no mercado | pergunta 5 |
 | Capital próprio | pergunta 6 |
-| Praça pretendida | pergunta 3 |
+| Praça pretendida | pergunta 3, como a pessoa escreveu |
+| Cidade | separada da praça |
+| Estado | sigla, separada da praça |
+| Telefone | o mesmo WhatsApp da pergunta 2 |
+| Origem do lead | fixo em `Tráfego` (veja `KOMMO_ORIGEM`) |
 | URL onde converteu | URL da landing, com a query string do anúncio |
 | UTM source | `utm_source` da URL |
 | UTM medium | `utm_medium` da URL |
@@ -151,9 +156,29 @@ função consulta os campos existentes no Kommo, cria os que faltam e guarda os
 ids em memória. Não precisa cadastrar nada na mão.
 
 Como a busca é **pelo nome**, os campos que a conta da VIVA já tinha
-(`URL onde converteu`, `UTM source`, `UTM medium`, `UTM campaign`) são
-reaproveitados em vez de duplicados. Se alguém renomear um deles no Kommo, a
-função deixa de encontrá-lo e cria outro com o nome antigo.
+(`URL onde converteu`, `UTM source`, `UTM medium`, `UTM campaign`, `Cidade`,
+`Estado`, `Telefone`, `Origem do lead`) são reaproveitados em vez de duplicados.
+Se alguém renomear um deles no Kommo, a função deixa de encontrá-lo e cria outro
+com o nome antigo.
+
+A função também respeita o **tipo** de cada campo: texto simples, numérico,
+telefone (`multitext`, que exige o enum junto do valor) e seleção (`select`, que
+exige o id da opção em vez do texto). No caso da seleção ela procura a opção
+pelo nome, ignorando acento e caixa.
+
+`Origem do lead` é o único que a função **nunca cria**: um campo de seleção novo
+nasceria sem opções e seria inútil. Ele só é preenchido se já existir na conta.
+
+### Cidade e estado
+
+A pergunta 3 é texto livre ("Em qual cidade você quer operar?"), então a função
+separa em duas colunas. Ela entende `Juiz de Fora, MG`, `Juiz de Fora - MG`,
+`São Paulo/SP`, `Belo Horizonte | Minas Gerais` e até `Maceió AL`, aceitando
+tanto a sigla quanto o nome por extenso do estado.
+
+Quando não dá para reconhecer o estado com segurança, o campo `Estado` fica
+vazio e a cidade recebe o texto inteiro. O campo `Praça pretendida` sempre
+guarda o que a pessoa escreveu, sem alteração.
 
 Se o token não tiver permissão de administrador, a criação falha em silêncio e o
 lead entra assim mesmo, com as respostas na nota. O erro fica no log de funções
