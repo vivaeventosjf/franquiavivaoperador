@@ -16,24 +16,16 @@
 #
 # Estas linhas sao geradas por ferramentas/netlify.js naquele repositorio
 # (arquivo regras-para-o-site-da-franquia.txt). Ao entrar uma unidade nova,
-# acrescente o par de regras dela aqui, senao ela responde 404.
+# acrescente a regra dela aqui, senao ela responde 404.
+#
+# Uma regra por unidade, so com /*. Nao acrescente uma regra 301 de
+# "/unidade" para "/unidade/": o Netlify normaliza a barra final, a regra
+# casa com ela mesma e a pagina entra em loop de redirecionamento.
 # ------------------------------------------------------------------
-[[redirects]]
-  from = "/belo-horizonte"
-  to = "/belo-horizonte/"
-  status = 301
-  force = true
-
 [[redirects]]
   from = "/belo-horizonte/*"
   to = "https://belo-horizonte.netlify.app/belo-horizonte/:splat"
   status = 200
-  force = true
-
-[[redirects]]
-  from = "/aracaju"
-  to = "/aracaju/"
-  status = 301
   force = true
 
 [[redirects]]
