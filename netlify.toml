@@ -7,3 +7,30 @@
 
 [functions]
   node_bundler = "esbuild"
+
+# ------------------------------------------------------------------
+# Cache
+# Imagens, fontes e o favicon nunca mudam de conteúdo sem mudar de nome,
+# então podem ficar um ano no navegador.
+# ------------------------------------------------------------------
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# CSS e JS são versionados na query (?v=18), então também podem durar.
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# O HTML precisa ser sempre conferido, senão uma alteração nunca chega.
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

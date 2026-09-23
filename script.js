@@ -90,6 +90,27 @@
     });
   }
 
+  /* ---------- Vídeo sob demanda ---------- */
+  var capa = document.getElementById('videoCapa');
+  if (capa) {
+    capa.addEventListener('click', function () {
+      var id = capa.getAttribute('data-video');
+      var frame = document.createElement('iframe');
+
+      frame.src = 'https://www.youtube-nocookie.com/embed/' + id + '?rel=0&autoplay=1';
+      frame.title = 'VIVA Eventos, conheça a rede';
+      frame.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+      frame.referrerPolicy = 'strict-origin-when-cross-origin';
+      frame.allowFullscreen = true;
+
+      var caixa = document.createElement('div');
+      caixa.className = 'video-frame';
+      caixa.appendChild(frame);
+
+      capa.parentNode.replaceChild(caixa, capa);
+    });
+  }
+
   /* ---------- Links de contato e redes ---------- */
   function setHref(id, url) {
     var el = document.getElementById(id);

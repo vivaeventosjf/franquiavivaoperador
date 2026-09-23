@@ -1,4 +1,43 @@
 /* ============================================================
+   FONTES (auto-hospedadas)
+   Servir daqui em vez do Google Fonts elimina duas conexões
+   externas e a folha de estilo que bloqueava a primeira pintura.
+   Subset latin apenas.
+   ============================================================ */
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('assets/fontes/lato-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('assets/fontes/lato-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('assets/fontes/lato-900.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Permanent Marker';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('assets/fontes/permanent-marker-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ============================================================
    VIVA Eventos · Captação de OPERADORES
    "Você já sabe vender. Falta ser dono da festa."
    Identidade: laranja #F47720 · roxo #3B1D64 · Lato + Permanent Marker
@@ -307,6 +346,24 @@ section { position: relative; }
   background: #000; border: 1px solid var(--linha);
 }
 .video-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* ---- Fachada do vídeo ---- */
+.video-capa { display: block; padding: 0; width: 100%; cursor: pointer; }
+.video-capa img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  transition: transform .5s cubic-bezier(.22,.61,.36,1), opacity .3s ease;
+}
+.video-capa:hover img { transform: scale(1.03); opacity: .85; }
+.video-play {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 68px; height: 48px; z-index: 2; transition: transform .2s ease;
+}
+.video-capa:hover .video-play { transform: translate(-50%, -50%) scale(1.08); }
+.video-play svg { width: 100%; height: 100%; }
+.video-play .play-bg { fill: rgba(15, 6, 25, .78); transition: fill .2s ease; }
+.video-capa:hover .play-bg { fill: var(--laranja); }
+.video-play .play-arrow { fill: #fff; }
+.video-capa:focus-visible { outline: 3px solid var(--laranja-claro); outline-offset: 3px; }
 
 /* ============================================================
    ESPELHO (a dor)
