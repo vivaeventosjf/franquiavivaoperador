@@ -9,6 +9,40 @@
   node_bundler = "esbuild"
 
 # ------------------------------------------------------------------
+# Landings das unidades
+# Elas vivem noutro projeto do Netlify (repositorio vivaeventosjf/belo-horizonte),
+# porque um dominio so pode pertencer a um projeto. Com status 200 o conteudo
+# e servido aqui mesmo: a URL continua franquia.vivaeventos.com.br/belo-horizonte.
+#
+# Estas linhas sao geradas por ferramentas/netlify.js naquele repositorio
+# (arquivo regras-para-o-site-da-franquia.txt). Ao entrar uma unidade nova,
+# acrescente o par de regras dela aqui, senao ela responde 404.
+# ------------------------------------------------------------------
+[[redirects]]
+  from = "/belo-horizonte"
+  to = "/belo-horizonte/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/belo-horizonte/*"
+  to = "https://belo-horizonte.netlify.app/belo-horizonte/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/aracaju"
+  to = "/aracaju/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/aracaju/*"
+  to = "https://belo-horizonte.netlify.app/aracaju/:splat"
+  status = 200
+  force = true
+
+# ------------------------------------------------------------------
 # Cache
 # Imagens, fontes e o favicon nunca mudam de conteúdo sem mudar de nome,
 # então podem ficar um ano no navegador.
