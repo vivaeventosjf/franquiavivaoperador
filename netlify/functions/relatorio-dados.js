@@ -52,6 +52,14 @@ exports.handler = async function (event) {
     return resposta(200, { ok: true, configuracao: situacao });
   }
 
+  /* Diagnóstico do token da Meta: diz quem é o token, quais permissões ele
+     carrega e a quais contas de anúncio tem acesso. Sem isto, o erro (#200)
+     é ambíguo entre "faltou a permissão no token" e "faltou dar a conta ao
+     usuário de sistema", que se resolvem em telas diferentes. */
+  if (q.checar === 'meta') {
+    return await checarMeta();
+  }
+
   const de = dataValida(q.de) ? q.de : hojeBR(-30);
   const ate = dataValida(q.ate) ? q.ate : hojeBR(0);
 
@@ -85,6 +93,51 @@ exports.handler = async function (event) {
     return resposta(502, { ok: false, error: err.message });
   }
 };
+
+/* ---------- diagnóstico da Meta ---------- */
+
+async function checarMeta() {
+  const token = process.env.META_TOKEN;
+  const conta = process.env.META_AD_ACCOUNT_ID;
+  if (!token) return resposta(200, { ok: false, error: 'META_TOKEN ausente' });
+
+  const versao = process.env.META_API_VERSION || 'v23.0';
+  const g = async function (caminho) {
+    try {
+      const r = await fetch(`https://graph.facebook.com/${versao}/${caminho}` +
+        `${caminho.indexOf('?') >= 0 ? '&' : '?'}access_token=${encodeURIComponent(token)}`);
+      const c = await r.json();
+      return c.error ? { erro: c.error.message, codigo: c.error.code } : c;
+    } catch (err) {
+      return { erro: err.message };
+    }
+  };
+
+  /* debug_token revela o tipo do token, o app dono e os escopos concedidos. */
+  const debug = await g(`debug_token?input_token=${encodeURIComponent(token)}`);
+  const contas = await g('me/adaccounts?fields=id,name,account_status&limit=50');
+
+  const d = (debug && debug.data) || {};
+  const lista = (contas && contas.data) || [];
+  const act = conta && String(conta).startsWith('act_') ? conta : `act_${conta}`;
+
+  return resposta(200, {
+    ok: true,
+    token: {
+      tipo: d.type || 'desconhecido',
+      valido: d.is_valid === true,
+      expira_em: d.expires_at ? new Date(d.expires_at * 1000).toISOString() : 'nunca',
+      escopos: d.scopes || [],
+      tem_ads_read: Array.isArray(d.scopes) &&
+        (d.scopes.indexOf('ads_read') >= 0 || d.scopes.indexOf('ads_management') >= 0),
+      erro: debug && debug.erro
+    },
+    contas_visiveis: lista.map(function (c) { return { id: c.id, nome: c.name }; }),
+    conta_procurada: act,
+    conta_esta_na_lista: lista.some(function (c) { return c.id === act; }),
+    erro_ao_listar: contas && contas.erro
+  });
+}
 
 /* ---------- cache ---------- *
  * O Blobs só existe quando a função roda no Netlify. Rodando localmente sem
