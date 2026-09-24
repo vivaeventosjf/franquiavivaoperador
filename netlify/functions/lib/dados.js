@@ -151,6 +151,10 @@ async function buscarKommo(de, ate) {
       pontos: Number(campos['Pontuação'] || 0),
       capital: campos['Capital próprio'] || '',
       cidade: campos['Cidade'] || '',
+      /* Um lead sem UTM nao veio das campanhas: e entrada manual, indicacao
+         ou outro funil. Ele existe no CRM do periodo, mas contá-lo como
+         resultado de midia barateia o custo por lead artificialmente. */
+      atribuido: Boolean(campos['UTM campaign'] || campos['UTM source']),
       etapa: etapas[l.status_id] || 'sem etapa',
       perdido: l.status_id === 143 || /perdid|closed\s*-?\s*lost/i.test(etapas[l.status_id] || '')
     };
@@ -201,8 +205,13 @@ async function buscarEtapas(base, cabecalho) {
  * A chave de junção é o par criativo + praça, que é o que a UTM carrega e o
  * que o Meta expõe em ad_name + adset_name.
  */
-function agregar(meta, leads, de, ate) {
+function agregar(meta, todosOsLeads, de, ate) {
   const total = somar(meta);
+
+  /* O relatorio mede o que a midia trouxe. Os demais ficam num contador
+     separado, para ninguem achar que sumiram. */
+  const leads = todosOsLeads.filter(function (l) { return l.atribuido; });
+  const semAtribuicao = todosOsLeads.length - leads.length;
 
   const porCriativo = agrupar(meta, leads, 'criativo');
   const porPraca = agrupar(meta, leads, 'praca');
@@ -223,6 +232,7 @@ function agregar(meta, leads, de, ate) {
       cliques: total.cliques,
       visitas: total.visitas,
       leads: leads.length,
+      leads_sem_atribuicao: semAtribuicao,
       completos: completos.length,
       classe_a: classeA.length,
       classe_ab: classeAB.length,

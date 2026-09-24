@@ -57,7 +57,10 @@ exports.handler = async function (event) {
      é ambíguo entre "faltou a permissão no token" e "faltou dar a conta ao
      usuário de sistema", que se resolvem em telas diferentes. */
   if (q.checar === 'meta') {
-    return await checarMeta();
+    return await checarMeta(
+      dataValida(q.de) ? q.de : hojeBR(-30),
+      dataValida(q.ate) ? q.ate : hojeBR(0)
+    );
   }
 
   const de = dataValida(q.de) ? q.de : hojeBR(-30);
@@ -96,7 +99,7 @@ exports.handler = async function (event) {
 
 /* ---------- diagnóstico da Meta ---------- */
 
-async function checarMeta() {
+async function checarMeta(de, ate) {
   const token = process.env.META_TOKEN;
   const conta = process.env.META_AD_ACCOUNT_ID;
   if (!token) return resposta(200, { ok: false, error: 'META_TOKEN ausente' });
@@ -132,11 +135,29 @@ async function checarMeta() {
         (d.scopes.indexOf('ads_read') >= 0 || d.scopes.indexOf('ads_management') >= 0),
       erro: debug && debug.erro
     },
-    contas_visiveis: lista.map(function (c) { return { id: c.id, nome: c.name }; }),
+    contas_visiveis: await comGasto(g, lista, de, ate),
     conta_procurada: act,
     conta_esta_na_lista: lista.some(function (c) { return c.id === act; }),
     erro_ao_listar: contas && contas.erro
   });
+}
+
+/* Gasto de cada conta no periodo: e o que revela qual delas tem as campanhas
+   do relatorio, quando o portfolio tem varias contas parecidas. */
+async function comGasto(g, lista, de, ate) {
+  const intervalo = encodeURIComponent(JSON.stringify({ since: de, until: ate }));
+  const fora = [];
+  for (const c of lista.slice(0, 15)) {
+    const r = await g(`${c.id}/insights?fields=spend&time_range=${intervalo}`);
+    const linha = r && r.data && r.data[0];
+    fora.push({
+      id: c.id,
+      nome: c.name,
+      gasto_no_periodo: linha ? Number(linha.spend || 0) : 0,
+      erro: r && r.erro
+    });
+  }
+  return fora.sort(function (a, b) { return b.gasto_no_periodo - a.gasto_no_periodo; });
 }
 
 /* ---------- cache ---------- *
