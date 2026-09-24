@@ -67,6 +67,12 @@ async function buscarMeta(de, ate) {
     url = corpo.paging && corpo.paging.next ? corpo.paging.next : null;
   }
 
+  /* As conversoes personalizadas chegam nas acoes como
+     "offsite_conversion.custom.<id>", sem nome. Este mapa traduz o id para o
+     nome que o time deu no Gerenciador, e e o que permite achar o evento de
+     formulario iniciado sem ninguem ter que descobrir e configurar o id. */
+  const nomesDeConversao = await buscarConversoes(versao, act, token);
+
   return linhas.map(function (l) {
     return {
       criativo: l.ad_name || 'sem nome',
@@ -76,9 +82,55 @@ async function buscarMeta(de, ate) {
       impressoes: Number(l.impressions || 0),
       alcance: Number(l.reach || 0),
       cliques: Number(l.inline_link_clicks || 0),
-      visitas: extrairAcao(l.actions, 'landing_page_view')
+      visitas: extrairAcao(l.actions, 'landing_page_view'),
+      formularios: extrairPorNome(l.actions, nomesDeConversao, /iniciou|inicio|início|form/i),
+      acoes: nomearAcoes(l.actions, nomesDeConversao)
     };
   });
+}
+
+/* Conversoes personalizadas da conta: id -> nome. Um erro aqui nao pode
+   derrubar o relatorio inteiro, entao devolve mapa vazio e segue. */
+async function buscarConversoes(versao, act, token) {
+  try {
+    const r = await fetch(`https://graph.facebook.com/${versao}/${act}/customconversions` +
+      `?fields=id,name&limit=200&access_token=${encodeURIComponent(token)}`);
+    const c = await r.json();
+    const mapa = {};
+    (c.data || []).forEach(function (x) { mapa[String(x.id)] = x.name; });
+    return mapa;
+  } catch (err) {
+    return {};
+  }
+}
+
+/* Soma as acoes cujo NOME casa com o padrao. Usar o nome, e nao o id, deixa o
+   relatorio sobreviver a uma conversao recriada com id novo. */
+function extrairPorNome(acoes, nomes, padrao) {
+  if (!Array.isArray(acoes)) return 0;
+  let soma = 0;
+  acoes.forEach(function (a) {
+    const nome = nomeDaAcao(a.action_type, nomes);
+    if (padrao.test(nome)) soma += Number(a.value || 0);
+  });
+  return soma;
+}
+
+/* Todas as acoes com nome legivel, para o relatorio poder mostrar quais
+   eventos existem sem que ninguem precise decorar ids. */
+function nomearAcoes(acoes, nomes) {
+  const fora = {};
+  (acoes || []).forEach(function (a) {
+    const nome = nomeDaAcao(a.action_type, nomes);
+    fora[nome] = (fora[nome] || 0) + Number(a.value || 0);
+  });
+  return fora;
+}
+
+function nomeDaAcao(tipo, nomes) {
+  const m = String(tipo || '').match(/^offsite_conversion\.custom\.(\d+)$/);
+  if (m && nomes[m[1]]) return nomes[m[1]];
+  return String(tipo || 'desconhecida');
 }
 
 /* As ações vêm como lista de {action_type, value}; só algumas interessam. */
@@ -231,6 +283,7 @@ function agregar(meta, todosOsLeads, de, ate) {
       alcance: total.alcance,
       cliques: total.cliques,
       visitas: total.visitas,
+      formularios: total.formularios,
       leads: leads.length,
       leads_sem_atribuicao: semAtribuicao,
       completos: completos.length,
@@ -240,6 +293,7 @@ function agregar(meta, todosOsLeads, de, ate) {
       ctr: pct(total.cliques, total.impressoes),
       cpc: divisao(total.gasto, total.cliques),
       cpm: total.impressoes ? arred(total.gasto / total.impressoes * 1000) : 0,
+      custo_formulario: divisao(total.gasto, total.formularios),
       custo_lead: divisao(total.gasto, leads.length),
       custo_completo: divisao(total.gasto, completos.length),
       custo_classe_a: divisao(total.gasto, classeA.length),
@@ -254,7 +308,10 @@ function agregar(meta, todosOsLeads, de, ate) {
     capital: contar(completos, 'capital'),
     /* Cidade declarada por praça anunciada: é o cruzamento que revela demanda
        fora do alvo, como Vitória apareceu em setembro. */
-    cidades_por_praca: cidadesPorPraca(leads)
+    cidades_por_praca: cidadesPorPraca(leads),
+    /* Todos os eventos que a conta registrou no periodo, por nome. Serve para
+       conferir se o evento certo esta sendo lido. */
+    eventos_meta: somarEventos(meta)
   };
 }
 
@@ -273,6 +330,8 @@ function agrupar(meta, leads, chave) {
       impressoes: m.impressoes,
       cliques: m.cliques,
       visitas: m.visitas,
+      formularios: m.formularios,
+      custo_formulario: divisao(m.gasto, m.formularios),
       ctr: pct(m.cliques, m.impressoes),
       leads: meus.length,
       completos: meus.filter(function (x) { return /completo/i.test(x.status); }).length,
@@ -295,12 +354,23 @@ function cidadesPorPraca(leads) {
   return fora;
 }
 
+function somarEventos(linhas) {
+  const fora = {};
+  linhas.forEach(function (l) {
+    Object.keys(l.acoes || {}).forEach(function (k) {
+      fora[k] = (fora[k] || 0) + l.acoes[k];
+    });
+  });
+  return fora;
+}
+
 function somar(linhas) {
   return linhas.reduce(function (s, l) {
     s.gasto += l.gasto; s.impressoes += l.impressoes;
     s.alcance += l.alcance; s.cliques += l.cliques; s.visitas += l.visitas;
+    s.formularios += (l.formularios || 0);
     return s;
-  }, { gasto: 0, impressoes: 0, alcance: 0, cliques: 0, visitas: 0 });
+  }, { gasto: 0, impressoes: 0, alcance: 0, cliques: 0, visitas: 0, formularios: 0 });
 }
 
 function contar(lista, chave) {

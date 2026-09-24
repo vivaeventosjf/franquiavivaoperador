@@ -121,6 +121,7 @@
       kpi(d(t.gasto), 'Investimento total', true) +
       kpi(i(t.impressoes), 'Impressões') +
       kpi(i(t.cliques), 'Cliques no link') +
+      kpi(i(t.formularios), 'Formulários iniciados') +
       kpi(i(t.leads), 'Leads no CRM') +
       kpi(i(t.completos), 'Candidaturas completas') +
       kpi(i(t.classe_a), 'Leads classe A', true) +
@@ -135,7 +136,8 @@
         linhaFunil('Impressões', t.impressoes, null, t.impressoes ? d(t.gasto / t.impressoes * 1000) + ' <span style="color:var(--tinta-3)">/mil</span>' : 'n/d'),
         linhaFunil('Cliques no link', t.cliques, pct(t.cliques, t.impressoes), custo(t.cpc, t.cliques)),
         linhaFunil('Visualizações da página', t.visitas, pct(t.visitas, t.cliques), custo(t.gasto / (t.visitas || 1), t.visitas)),
-        linhaFunil('<strong>Leads no CRM</strong>', '<strong>' + i(t.leads) + '</strong>', pct(t.leads, t.visitas), '<strong>' + (t.leads ? d(t.custo_lead) : 'n/d') + '</strong>'),
+        linhaFunil('Formulários iniciados <span style="color:var(--tinta-3)">(Meta)</span>', t.formularios, pct(t.formularios, t.visitas), custo(t.custo_formulario, t.formularios)),
+        linhaFunil('<strong>Leads no CRM</strong>', '<strong>' + i(t.leads) + '</strong>', pct(t.leads, t.formularios || t.visitas), '<strong>' + (t.leads ? d(t.custo_lead) : 'n/d') + '</strong>'),
         linhaFunil('Candidaturas completas', t.completos, pct(t.completos, t.leads), custo(t.custo_completo, t.completos)),
         linhaFunil('<strong>Leads classe A</strong>', '<strong>' + i(t.classe_a) + '</strong>', pct(t.classe_a, t.completos), '<strong>' + (t.classe_a ? d(t.custo_classe_a) : 'n/d') + '</strong>')
       ]
@@ -144,6 +146,23 @@
     if (t.visitas) {
       h.push('<p><strong>' + p(t.conversao_visita_lead) + ' de todas as visitas viraram lead</strong> (' +
         i(t.leads) + ' de ' + i(t.visitas) + '). A mediana de mercado para geração de lead B2B é 3,6%, e a mediana geral de landing pages é 6,6%.</p>');
+    }
+
+    /* O Meta e o CRM contam a mesma coisa por caminhos diferentes. Quando os
+       dois divergem muito, o problema e de rastreamento, nao de campanha. */
+    if (t.formularios && t.leads) {
+      var captura = t.formularios / t.leads * 100;
+      if (captura < 70) {
+        h.push('<div class="nota"><strong>O pixel está subnotificando.</strong> O Meta registrou ' +
+          i(t.formularios) + ' formulários iniciados, e o CRM recebeu ' + i(t.leads) +
+          ' leads no mesmo período: o rastreamento captura cerca de ' + Math.round(captura) +
+          '% do que realmente acontece. Isso não afeta só o relatório, afeta a entrega: o algoritmo otimiza pelo que ele mede.</div>');
+      }
+    }
+
+    if (t.leads_sem_atribuicao) {
+      h.push('<p class="fonte">Além destes, ' + i(t.leads_sem_atribuicao) +
+        ' leads entraram no CRM no período sem UTM de campanha (entrada manual, indicação ou outro funil). Eles não entram nas contas acima, que medem o que a mídia trouxe.</p>');
     }
 
     /* Qualidade */
@@ -184,6 +203,7 @@
         return '<tr><td>' + (c.leads ? '<strong>' + esc(c.nome) + '</strong>' : esc(c.nome)) + '</td>' +
           '<td><span class="barra" style="--w:' + (c.gasto / maior * 100).toFixed(1) + '%"></span>' + d(c.gasto) + '</td>' +
           '<td class="num">' + p(c.ctr) + '</td>' +
+          '<td class="num">' + i(c.formularios || 0) + '</td>' +
           '<td class="num">' + (c.leads ? '<strong>' + i(c.leads) + '</strong>' : '<span class="neg">0</span>') + '</td>' +
           '<td class="num">' + custo(c.custo_lead, c.leads) + '</td>' +
           '<td class="num">' + i(c.classe_a) + '</td></tr>';
@@ -191,7 +211,7 @@
       h.push('<h2 class="pagina-nova">Desempenho por criativo</h2>');
       h.push('<p>Com atribuição real: cada lead do CRM carrega a UTM do anúncio que o originou.</p>');
       h.push(tabela(
-        [{ t: 'Criativo' }, { t: 'Investimento' }, { t: 'CTR', num: true }, { t: 'Leads', num: true }, { t: 'Custo/lead', num: true }, { t: 'Classe A', num: true }],
+        [{ t: 'Criativo' }, { t: 'Investimento' }, { t: 'CTR', num: true }, { t: 'Forms', num: true }, { t: 'Leads', num: true }, { t: 'Custo/lead', num: true }, { t: 'Classe A', num: true }],
         linhasCr
       ));
 
