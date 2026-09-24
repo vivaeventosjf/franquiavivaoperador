@@ -143,22 +143,11 @@
       ]
     ));
 
-    if (t.visitas) {
-      h.push('<p><strong>' + p(t.conversao_visita_lead) + ' de todas as visitas viraram lead</strong> (' +
-        i(t.leads) + ' de ' + i(t.visitas) + '). A mediana de mercado para geração de lead B2B é 3,6%, e a mediana geral de landing pages é 6,6%.</p>');
+    if (t.visitas && t.leads) {
+      h.push(blocoBenchmark(t));
     }
 
-    /* O Meta e o CRM contam a mesma coisa por caminhos diferentes. Quando os
-       dois divergem muito, o problema e de rastreamento, nao de campanha. */
-    if (t.formularios && t.leads) {
-      var captura = t.formularios / t.leads * 100;
-      if (captura < 70) {
-        h.push('<div class="nota"><strong>O pixel está subnotificando.</strong> O Meta registrou ' +
-          i(t.formularios) + ' formulários iniciados, e o CRM recebeu ' + i(t.leads) +
-          ' leads no mesmo período: o rastreamento captura cerca de ' + Math.round(captura) +
-          '% do que realmente acontece. Isso não afeta só o relatório, afeta a entrega: o algoritmo otimiza pelo que ele mede.</div>');
-      }
-    }
+    h.push(blocoRastreamento(r, t));
 
     if (t.leads_sem_atribuicao) {
       h.push('<p class="fonte">Além destes, ' + i(t.leads_sem_atribuicao) +
@@ -193,6 +182,7 @@
       });
       h.push('<h3>Capital declarado por quem completou</h3>');
       h.push(tabela([{ t: 'Faixa' }, { t: 'Candidatos', num: true }, { t: 'Participação', num: true }], linhasCap));
+      h.push(observacaoCapital(cap, t));
     }
 
     /* Criativos */
@@ -215,14 +205,7 @@
         linhasCr
       ));
 
-      var vazios = cr.filter(function (c) { return c.gasto > 0 && !c.leads; });
-      if (vazios.length) {
-        var desperdicio = vazios.reduce(function (s, c) { return s + c.gasto; }, 0);
-        h.push('<div class="nota"><strong>' + vazios.length + ' criativo' + (vazios.length > 1 ? 's' : '') +
-          ' sem um único lead.</strong> ' + esc(vazios.map(function (c) { return c.nome; }).join(', ')) +
-          ' consumiram <strong>' + d(desperdicio) + '</strong>, ou ' + p(desperdicio / t.gasto * 100) +
-          ' do investimento do período, sem retorno mensurável.</div>');
-      }
+      h.push(observacoesCriativos(cr, t));
     }
 
     /* Praças */
@@ -248,6 +231,7 @@
         [{ t: 'Praça' }, { t: 'Investido', num: true }, { t: 'Leads', num: true }, { t: 'Custo/lead', num: true }, { t: 'Classe A', num: true }, { t: 'Custo/lead A', num: true }],
         linhasPr
       ));
+      h.push(observacoesPracas(pr));
     }
 
     /* Cidade real contra praça anunciada */
@@ -272,6 +256,7 @@
         [{ t: 'Anúncio veiculado para' }, { t: 'Leads', num: true }, { t: 'Cidades que responderam' }, { t: 'Aderência', num: true }],
         linhasCid
       ));
+      h.push(observacaoCidades(cid));
     }
 
     /* Situação comercial */
@@ -291,10 +276,337 @@
       }
     }
 
+    h.push(blocoCampanhas(r, t));
+    h.push(blocoRecomendacoes(r, t));
+
     h.push('<div class="nota"><strong>Sobre a confiança destes números.</strong> O volume de mídia vem da API da Meta. Os leads, a origem por UTM, a classificação e a etapa vêm do CRM. Períodos curtos e bases pequenas oscilam bastante: com poucos leads por praça, as comparações servem como direção, não como medida exata.</div>');
 
     conteudo.innerHTML = h.join('\n');
     $('subtitulo').textContent = 'Campanhas de expansão · ' + dataBR(r.periodo.de) + ' a ' + dataBR(r.periodo.ate) + ' · ' + r.periodo.dias + ' dias';
+  }
+
+  /* ---------- observações ----------
+     Cada bloco só aparece quando o dado sustenta a afirmação. Um relatório que
+     afirma o mesmo sempre não está lendo os números, está repetindo texto. */
+
+  var BENCH = { b2b: 3.6, geral: 6.6, topo: [5, 12], eventos: 12.3, ctrMeta: 1.03 };
+
+  function blocoBenchmark(t) {
+    var v = t.conversao_visita_lead;
+    var linhas = [
+      '<tr><td><strong>VIVA · visita para lead</strong></td><td class="num"><strong>' + p(v) +
+        '</strong></td><td><span class="pos">Nosso número</span></td></tr>',
+      linhaBench('Mediana geral de landing pages', BENCH.geral, v),
+      linhaBench('Geração de lead B2B', BENCH.b2b, v),
+      '<tr><td>Faixa dos melhores desempenhos</td><td class="num">' + p(BENCH.topo[0]) + ' a ' + p(BENCH.topo[1]) + '</td><td>' +
+        (v >= BENCH.topo[0] && v <= BENCH.topo[1] ? '<span class="pos">estamos dentro dela</span>' :
+         v > BENCH.topo[1] ? '<span class="pos">acima dela</span>' : '<span class="neg">abaixo dela</span>') + '</td></tr>',
+      '<tr><td>Mediana do setor de eventos e entretenimento</td><td class="num">' + p(BENCH.eventos) + '</td><td>referência de teto</td></tr>'
+    ];
+
+    var out = '<h2>Como isso se compara ao mercado</h2>' +
+      '<p><strong>' + p(v) + ' de todas as visitas viraram lead</strong> (' + i(t.leads) + ' de ' + i(t.visitas) +
+      '). Uma taxa isolada não diz se é boa, então abaixo estão as referências públicas.</p>' +
+      tabela([{ t: 'Referência' }, { t: 'Conversão da visita', num: true }, { t: 'Comparação' }], linhas);
+
+    if (v >= BENCH.b2b * 1.5) {
+      out += '<div class="nota"><strong>A landing não é o problema. É o ativo mais forte da operação.</strong> ' +
+        'Converter ' + p(v) + ' das visitas em lead coloca a página acima da mediana de geração de lead B2B (' +
+        p(BENCH.b2b) + '), que é a comparação justa para uma oferta de sociedade com capital envolvido. ' +
+        'Vender uma sociedade é uma decisão bem mais pesada que baixar um e-book, e mesmo assim a página converte acima de quem vende o e-book.</div>';
+    } else if (v < BENCH.b2b) {
+      out += '<div class="nota"><strong>A página está abaixo da referência do setor.</strong> Com ' + p(v) +
+        ' contra uma mediana B2B de ' + p(BENCH.b2b) + ', vale investigar a landing antes de aumentar a verba: ' +
+        'subir o investimento multiplica o problema em vez de resolvê-lo.</div>';
+    }
+
+    if (t.ctr && t.ctr < BENCH.ctrMeta && v >= BENCH.b2b && t.cliques) {
+      var ganho = Math.round(t.cliques * (BENCH.ctrMeta / t.ctr - 1));
+      var leadsExtra = Math.round(ganho * (t.leads / t.cliques));
+      out += '<h3>Onde há folga</h3>' +
+        '<p>Se o meio e o fim do funil vão bem, a alavanca está no topo. O CTR de <strong>' + p(t.ctr) +
+        '</strong> está abaixo da mediana de link do Meta (' + p(BENCH.ctrMeta) + '). Fechar essa diferença renderia cerca de <strong>' +
+        i(ganho) + ' cliques a mais</strong> com o mesmo investimento, o que daria aproximadamente <strong>' +
+        i(leadsExtra) + ' leads adicionais</strong>, mantida a eficiência atual da página. É ganho de criativo e segmentação, não de página.</p>';
+    }
+    return out;
+  }
+
+  function linhaBench(rotulo, referencia, nosso) {
+    var razao = referencia ? nosso / referencia : 0;
+    var texto = razao >= 1.15 ? '<span class="pos">estamos ' + Math.round((razao - 1) * 100) + '% acima</span>'
+      : razao <= 0.85 ? '<span class="neg">estamos ' + Math.round((1 - razao) * 100) + '% abaixo</span>'
+      : 'equivalente';
+    if (razao >= 2) texto = '<span class="pos">estamos ' + razao.toFixed(1).replace('.', ',') + '× acima</span>';
+    return '<tr><td>' + esc(rotulo) + '</td><td class="num">' + p(referencia) + '</td><td>' + texto + '</td></tr>';
+  }
+
+  function observacoesCriativos(cr, t) {
+    var out = [];
+    var comLead = cr.filter(function (c) { return c.leads > 0; })
+      .sort(function (a, b) { return b.leads - a.leads; });
+    var vazios = cr.filter(function (c) { return c.gasto > 0 && !c.leads; });
+
+    /* Concentração: um criativo carregando a campanha é informação de decisão. */
+    if (comLead.length && t.leads) {
+      var campeao = comLead[0];
+      var fatiaLeads = campeao.leads / t.leads * 100;
+      var fatiaGasto = t.gasto ? campeao.gasto / t.gasto * 100 : 0;
+      if (fatiaLeads >= 50) {
+        var txt = '<strong>' + esc(campeao.nome) + ' está sustentando a campanha.</strong> Produziu <strong>' +
+          i(campeao.leads) + ' dos ' + i(t.leads) + ' leads</strong> (' + p(fatiaLeads) + ') com ' +
+          p(fatiaGasto) + ' da verba.';
+        var segundo = comLead.slice(1).filter(function (c) { return c.custo_lead > 0; })
+          .sort(function (a, b) { return a.custo_lead - b.custo_lead; })[0];
+        if (segundo && campeao.custo_lead) {
+          txt += ' O custo por lead dele (' + d(campeao.custo_lead) + ') é ' +
+            (segundo.custo_lead / campeao.custo_lead).toFixed(1).replace('.', ',') +
+            '× menor que o do segundo melhor.';
+        }
+        txt += ' Vale produzir variações dele em vez de criativos novos do zero: é o único ativo com desempenho comprovado.';
+        out.push('<div class="nota">' + txt + '</div>');
+      }
+    }
+
+    if (vazios.length) {
+      var desperdicio = vazios.reduce(function (s, c) { return s + c.gasto; }, 0);
+      /* Peças com centavos de entrega não foram julgadas, foram ignoradas. */
+      var relevantes = vazios.filter(function (c) { return c.cliques >= 5; });
+      var ignorados = vazios.length - relevantes.length;
+      var gastoRelevante = relevantes.reduce(function (s, c) { return s + c.gasto; }, 0);
+
+      if (relevantes.length) {
+        out.push('<div class="nota"><strong>' + relevantes.length + ' criativo' + (relevantes.length > 1 ? 's' : '') +
+          ' com entrega e sem um único lead.</strong> ' + esc(relevantes.map(function (c) { return c.nome; }).join(', ')) +
+          ' consumiram <strong>' + d(gastoRelevante) + '</strong>, ou ' + p(gastoRelevante / t.gasto * 100) +
+          ' do investimento, sem retorno mensurável. Desligá-los libera essa verba para o que funciona.</div>');
+      }
+      if (ignorados) {
+        out.push('<p class="fonte">Outros ' + ignorados + ' criativos aparecem com gasto residual (' +
+          d(desperdicio - gastoRelevante) + ') e quase nenhuma entrega. Não dá para julgá-los: mal chegaram a rodar.</p>');
+      }
+    }
+
+    /* CTR alto sem resultado é a armadilha de leitura mais comum. */
+    var porCtr = cr.filter(function (c) { return c.cliques >= 10; })
+      .sort(function (a, b) { return b.ctr - a.ctr; });
+    if (porCtr.length > 1 && !porCtr[0].leads) {
+      out.push('<p>Repare que <strong>CTR alto não previu resultado</strong>. O ' + esc(porCtr[0].nome) +
+        ' teve o melhor CTR do conjunto (' + p(porCtr[0].ctr) + ') e não gerou um único lead. ' +
+        'Otimizar por clique barato, aqui, levaria à decisão errada.</p>');
+    }
+    return out.join('\n');
+  }
+
+  function observacoesPracas(pr) {
+    var com = pr.filter(function (c) { return c.leads > 0 && c.gasto > 0; });
+    var out = [];
+    if (com.length >= 2) {
+      var ordenado = com.slice().sort(function (a, b) { return a.custo_lead - b.custo_lead; });
+      var melhor = ordenado[0], pior = ordenado[ordenado.length - 1];
+      var razao = pior.custo_lead / melhor.custo_lead;
+      if (razao >= 1.8) {
+        var txt = '<strong>' + esc(melhor.nome) + ' é a praça mais eficiente</strong>, entregando um lead por ' +
+          d(melhor.custo_lead) + (melhor.classe_a ? ' e um lead de prioridade máxima por ' + d(melhor.custo_classe_a) : '') +
+          '. <strong>' + esc(pior.nome) + ' custa ' + razao.toFixed(1).replace('.', ',') + '× mais por lead</strong> (' +
+          d(pior.custo_lead) + ').';
+        /* CPM barato com lead caro parece economia e é o oposto. */
+        if (pior.cpm && melhor.cpm && pior.cpm < melhor.cpm) {
+          txt += ' E o motivo não é o preço da mídia: ' + esc(pior.nome) + ' tem o CPM <em>menor</em> (' +
+            d(pior.cpm) + ' contra ' + d(melhor.cpm) + '). A mídia lá é barata. O público é que responde menos. ' +
+            'Comprar barato uma audiência que não converte é o desperdício mais difícil de enxergar.';
+        }
+        out.push('<div class="nota">' + txt + '</div>');
+      }
+    }
+    var semLead = pr.filter(function (c) { return c.gasto > 0 && !c.leads; });
+    if (semLead.length) {
+      out.push('<p><strong>' + esc(semLead.map(function (c) { return c.nome; }).join(', ')) +
+        '</strong> recebeu investimento e não devolveu lead no período.</p>');
+    }
+    return out.join('\n');
+  }
+
+  function observacaoCapital(cap, t) {
+    var total = Object.keys(cap).reduce(function (s, k) { return s + cap[k]; }, 0);
+    if (!total) return '';
+    var zero = 0;
+    Object.keys(cap).forEach(function (k) {
+      if (/nada|nenhum|só com trabalho|so com trabalho|zero/i.test(k)) zero += cap[k];
+    });
+    if (!zero) return '';
+    var fatia = zero / total * 100;
+    if (fatia < 40) return '';
+    return '<div class="nota"><strong>O gargalo que estes números expõem não é de mídia, é de perfil financeiro.</strong> ' +
+      '<strong>' + i(zero) + ' dos ' + i(total) + '</strong> candidatos que preencheram o formulário inteiro (' +
+      p(fatia) + ') declararam não ter capital nenhum. Se o anúncio promete entrada com capital baixo, ' +
+      'ele está atraindo quem tem capital zero. Explicitar a faixa mínima esperada na peça reduziria o volume fora do perfil, ' +
+      'mesmo que reduza o volume total.</div>';
+  }
+
+  function observacaoCidades(cid) {
+    var out = [];
+    Object.keys(cid).forEach(function (praca) {
+      var mapa = cid[praca];
+      var total = Object.keys(mapa).reduce(function (s, k) { return s + mapa[k]; }, 0);
+      if (total < 4) return;
+      var alvo = Object.keys(mapa).filter(function (c) { return casaComPraca(c, praca); })
+        .reduce(function (s, c) { return s + mapa[c]; }, 0);
+      var ad = total ? alvo / total * 100 : 0;
+      if (ad >= 60) return;
+
+      /* A maior cidade de fora é a candidata a praça nova. */
+      var fora = Object.keys(mapa).filter(function (c) {
+        return !casaComPraca(c, praca) && c !== 'não informada';
+      }).sort(function (a, b) { return mapa[b] - mapa[a]; });
+      if (!fora.length) return;
+
+      var texto = '<strong>Só ' + Math.round(ad) + '% dos leads atraídos pelo anúncio de ' + esc(praca) +
+        ' são de lá.</strong> ' + esc(fora[0]) + ' respondeu com ' + mapa[fora[0]] + ' candidato' +
+        (mapa[fora[0]] > 1 ? 's' : '') + ', sem nunca ter recebido investimento.';
+      if (mapa[fora[0]] >= 3) {
+        texto += ' Demanda espontânea desse tamanho numa praça que nunca foi anunciada é um sinal que vale testar de propósito: ' +
+          'um teste pequeno e isolado diria, em duas ou três semanas, se ela se sustenta com verba própria.';
+      }
+      out.push('<div class="nota">' + texto + '</div>');
+    });
+    return out.join('\n');
+  }
+
+  function blocoCampanhas(r, t) {
+    var camp = (r.campanhas || []).filter(function (c) { return c.gasto > 0 && c.nome; });
+    if (camp.length < 2) return '';
+    var linhas = camp.slice().sort(function (a, b) {
+      if (!a.leads) return 1;
+      if (!b.leads) return -1;
+      return a.custo_lead - b.custo_lead;
+    }).map(function (c) {
+      return '<tr><td>' + esc(c.nome) + '</td><td class="num">' + d(c.gasto) + '</td>' +
+        '<td class="num">' + p(c.ctr) + '</td><td class="num">' + i(c.leads) + '</td>' +
+        '<td class="num">' + custo(c.custo_lead, c.leads) + '</td></tr>';
+    });
+    var out = '<h2>Comparação entre campanhas</h2>' +
+      tabela([{ t: 'Campanha' }, { t: 'Investido', num: true }, { t: 'CTR', num: true }, { t: 'Leads', num: true }, { t: 'Custo/lead', num: true }], linhas);
+
+    /* Quando CTR e resultado apontam para lados opostos, vale dizer em voz alta. */
+    var comLead = camp.filter(function (c) { return c.leads > 0; });
+    if (comLead.length >= 2) {
+      var melhor = comLead.slice().sort(function (a, b) { return a.custo_lead - b.custo_lead; })[0];
+      var pior = comLead.filter(function (c) { return c.nome !== melhor.nome; })
+        .sort(function (a, b) { return b.custo_lead - a.custo_lead; })[0];
+      if (pior && melhor.ctr < pior.ctr) {
+        out += '<p>A campanha mais eficiente teve o CTR <em>pior</em>: <strong>' + esc(melhor.nome) +
+          '</strong> entrega lead por ' + d(melhor.custo_lead) + ' com CTR de ' + p(melhor.ctr) +
+          ', contra ' + d(pior.custo_lead) + ' e CTR de ' + p(pior.ctr) + '. ' +
+          'O que mudou para melhor foi a qualidade de quem clicou, não a quantidade.</p>';
+      }
+    }
+    return out;
+  }
+
+  function blocoRecomendacoes(r, t) {
+    var recs = [];
+    var cr = r.criativos || [];
+    var pr = r.pracas || [];
+
+    /* Rastreamento primeiro: é a correção que destrava a confiança nas demais. */
+    var cad = cadastrosNoMeta(r);
+    if (cad !== null && t.completos && cad / t.completos < 0.7) {
+      recs.push('<strong>Corrigir o rastreamento da conversão, com prioridade.</strong> O Meta registrou ' +
+        i(cad) + ' cadastros, contra ' + i(t.completos) + ' candidaturas completas no CRM. Não é só um problema de relatório: ' +
+        'o algoritmo otimiza a entrega a partir do que ele mede, então hoje ele aprende com ' +
+        Math.round(cad / t.completos * 100) + '% da informação e mira no público errado. ' +
+        'Conferir o disparo do evento na página de obrigado e considerar a API de Conversões para enviar o dado do servidor.');
+    }
+
+    var vazios = cr.filter(function (c) { return c.gasto > 0 && !c.leads && c.cliques >= 5; });
+    if (vazios.length) {
+      var g = vazios.reduce(function (s, c) { return s + c.gasto; }, 0);
+      recs.push('<strong>Desligar ' + esc(vazios.map(function (c) { return c.nome; }).join(', ')) + '.</strong> ' +
+        'Consumiram ' + d(g) + ' com entrega suficiente para serem julgados e não entregaram um lead sequer, ' +
+        'ou seja ' + p(g / t.gasto * 100) + ' da verba sem retorno.');
+    }
+
+    Object.keys(r.cidades_por_praca || {}).forEach(function (praca) {
+      var mapa = r.cidades_por_praca[praca];
+      var fora = Object.keys(mapa).filter(function (c) {
+        return !casaComPraca(c, praca) && c !== 'não informada' && mapa[c] >= 3;
+      }).sort(function (a, b) { return mapa[b] - mapa[a]; });
+      if (fora.length) {
+        recs.push('<strong>Testar ' + esc(fora[0]) + ' com verba própria.</strong> ' + mapa[fora[0]] +
+          ' candidatos espontâneos vieram de lá pelo anúncio de ' + esc(praca) +
+          ', uma praça que nunca recebeu investimento. É a oportunidade mais barata visível nestes dados.');
+      }
+    });
+
+    var com = pr.filter(function (c) { return c.leads > 0 && c.gasto > 0; });
+    if (com.length >= 2) {
+      var ord = com.slice().sort(function (a, b) { return a.custo_lead - b.custo_lead; });
+      var caro = ord[ord.length - 1], barato = ord[0];
+      if (caro.custo_lead / barato.custo_lead >= 2.5) {
+        recs.push('<strong>Rever a verba de ' + esc(caro.nome) + '.</strong> Pelo custo de um lead lá (' +
+          d(caro.custo_lead) + ') compram-se ' + (caro.custo_lead / barato.custo_lead).toFixed(1).replace('.', ',') +
+          ' em ' + esc(barato.nome) + '. Migrar gradualmente e observar se o custo se mantém com mais volume.');
+      }
+    }
+
+    if (t.perdidos && t.leads && t.perdidos / t.leads >= 0.3) {
+      recs.push('<strong>Tratar a fila de contato como prioridade operacional.</strong> ' + i(t.perdidos) +
+        ' dos ' + i(t.leads) + ' leads (' + p(t.perdidos / t.leads * 100) +
+        ') já estão perdidos. Parte disso é perfil, mas parte é velocidade de resposta, e essa parte se recupera sem gastar um real a mais.');
+    }
+
+    if (t.conversao_visita_lead >= BENCH.b2b * 1.5) {
+      recs.push('<strong>Não mexer na landing.</strong> Ela converte ' + p(t.conversao_visita_lead) +
+        ' das visitas em lead, contra ' + p(BENCH.b2b) + ' da mediana de geração de lead B2B. ' +
+        'É o ativo mais forte da operação e mexer nela arrisca quebrar o que funciona.');
+    }
+
+    var lider = cr.filter(function (c) { return c.leads > 0; }).sort(function (a, b) { return b.leads - a.leads; })[0];
+    if (lider && t.leads && lider.leads / t.leads >= 0.5) {
+      recs.push('<strong>Produzir variações do ' + esc(lider.nome) + ', não criativos novos do zero.</strong> ' +
+        'É o único ativo com desempenho comprovado. Variar um elemento de cada vez é o que permite saber qual deles manda.');
+    }
+
+    if (!recs.length) return '';
+    return '<h2 class="pagina-nova">Recomendações</h2><ol><li>' + recs.join('</li><li>') + '</li></ol>';
+  }
+
+  /* Quantos cadastros o Meta registrou, pelo nome do evento. Devolve null
+     quando nenhum evento parece ser o de cadastro: afirmar subnotificação sem
+     ter o que comparar seria chutar. */
+  function cadastrosNoMeta(r) {
+    var n = r.total && r.total.cadastros_meta;
+    return (n === undefined || n === null) ? null : n;
+  }
+
+  function blocoRastreamento(r, t) {
+    var out = [];
+    var ev = r.eventos_meta || {};
+    var cad = cadastrosNoMeta(r);
+
+    if (cad !== null && t.completos && cad / t.completos < 0.7) {
+      out.push('<div class="nota"><strong>O pixel está subnotificando.</strong> O Meta registrou <strong>' +
+        i(cad) + ' cadastros</strong> no período, enquanto o CRM recebeu <strong>' + i(t.completos) +
+        ' candidaturas completas</strong>: o rastreamento captura cerca de <strong>' +
+        Math.round(cad / t.completos * 100) + '%</strong> do que realmente acontece. ' +
+        'Isso não afeta só o relatório, afeta a entrega: o algoritmo otimiza pelo que ele mede, ' +
+        'então está aprendendo com uma fração dos dados. Leia os resultados pelo CRM, não pelo Gerenciador.</div>');
+    }
+
+    /* A lista crua dos eventos serve para conferir se o relatório está lendo o
+       evento certo, sem precisar abrir o Gerenciador. */
+    var chaves = Object.keys(ev).filter(function (k) {
+      return /custom|cadastro|complet|form|iniciou|lead|candidat/i.test(k);
+    }).sort(function (a, b) { return ev[b] - ev[a]; });
+    if (chaves.length) {
+      out.push('<h3>Eventos que o Meta registrou</h3>');
+      out.push(tabela([{ t: 'Evento' }, { t: 'Volume', num: true }],
+        chaves.map(function (k) {
+          return '<tr><td>' + esc(k) + '</td><td class="num">' + i(ev[k]) + '</td></tr>';
+        })));
+    }
+    return out.join('\n');
   }
 
   function kpi(valor, rotulo, destaque) {

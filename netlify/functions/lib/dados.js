@@ -83,7 +83,10 @@ async function buscarMeta(de, ate) {
       alcance: Number(l.reach || 0),
       cliques: Number(l.inline_link_clicks || 0),
       visitas: extrairAcao(l.actions, 'landing_page_view'),
-      formularios: extrairPorNome(l.actions, nomesDeConversao, /iniciou|inicio|início|form/i),
+      /* "1 - Iniciou Forms" e "2 - Enviou Forms" sao etapas diferentes e ambas
+         contem "Forms": casar so por "form" somaria as duas. */
+      formularios: extrairPorNome(l.actions, nomesDeConversao, INICIO, ENVIO),
+      cadastros: extrairPorNome(l.actions, nomesDeConversao, ENVIO, INICIO),
       acoes: nomearAcoes(l.actions, nomesDeConversao)
     };
   });
@@ -104,14 +107,23 @@ async function buscarConversoes(versao, act, token) {
   }
 }
 
-/* Soma as acoes cujo NOME casa com o padrao. Usar o nome, e nao o id, deixa o
-   relatorio sobreviver a uma conversao recriada com id novo. */
-function extrairPorNome(acoes, nomes, padrao) {
+/* Padroes dos dois eventos do formulario. Ficam aqui em cima porque a
+   distincao entre eles e o que separa "comecou a se candidatar" de
+   "terminou", e errar isso inverte a leitura do funil. */
+const INICIO = /iniciou|inicio|início|começou|comecou|start/i;
+const ENVIO = /enviou|enviad|cadastr|complet|candidat|inscri|submit/i;
+
+/* Soma as acoes cujo NOME casa com o padrao, descartando as que casam com o
+   padrao de exclusao. Usar o nome, e nao o id, deixa o relatorio sobreviver a
+   uma conversao recriada com id novo. */
+function extrairPorNome(acoes, nomes, padrao, excluir) {
   if (!Array.isArray(acoes)) return 0;
   let soma = 0;
   acoes.forEach(function (a) {
     const nome = nomeDaAcao(a.action_type, nomes);
-    if (padrao.test(nome)) soma += Number(a.value || 0);
+    if (!padrao.test(nome)) return;
+    if (excluir && excluir.test(nome)) return;
+    soma += Number(a.value || 0);
   });
   return soma;
 }
@@ -284,6 +296,7 @@ function agregar(meta, todosOsLeads, de, ate) {
       cliques: total.cliques,
       visitas: total.visitas,
       formularios: total.formularios,
+      cadastros_meta: total.cadastros,
       leads: leads.length,
       leads_sem_atribuicao: semAtribuicao,
       completos: completos.length,
@@ -302,6 +315,7 @@ function agregar(meta, todosOsLeads, de, ate) {
 
     criativos: porCriativo,
     pracas: porPraca,
+    campanhas: agrupar(meta, leads, 'campanha'),
     classificacao: contar(leads, 'classe'),
     etapas: contar(leads, 'etapa'),
     status: contar(leads, 'status'),
@@ -333,6 +347,7 @@ function agrupar(meta, leads, chave) {
       formularios: m.formularios,
       custo_formulario: divisao(m.gasto, m.formularios),
       ctr: pct(m.cliques, m.impressoes),
+      cpm: m.impressoes ? arred(m.gasto / m.impressoes * 1000) : 0,
       leads: meus.length,
       completos: meus.filter(function (x) { return /completo/i.test(x.status); }).length,
       classe_a: a,
@@ -369,8 +384,9 @@ function somar(linhas) {
     s.gasto += l.gasto; s.impressoes += l.impressoes;
     s.alcance += l.alcance; s.cliques += l.cliques; s.visitas += l.visitas;
     s.formularios += (l.formularios || 0);
+    s.cadastros += (l.cadastros || 0);
     return s;
-  }, { gasto: 0, impressoes: 0, alcance: 0, cliques: 0, visitas: 0, formularios: 0 });
+  }, { gasto: 0, impressoes: 0, alcance: 0, cliques: 0, visitas: 0, formularios: 0, cadastros: 0 });
 }
 
 function contar(lista, chave) {
