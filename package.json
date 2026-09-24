@@ -1,0 +1,8 @@
+{
+  "name": "franquia-viva-operador",
+  "private": true,
+  "description": "Landing de captacao de socios-operadores e relatorio de midia da expansao.",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0"
+  }
+}

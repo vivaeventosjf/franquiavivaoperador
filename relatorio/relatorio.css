@@ -1,0 +1,374 @@
+/* ============================================================
+   VIVA Eventos · Base de relatórios
+   Mesma identidade da landing de operadores: laranja #f47720,
+   roxo #3b1d64, Lato + Permanent Marker. Fontes servidas da
+   pasta assets/fontes do projeto, como no site.
+
+   Só o que é de documento vive aqui: tipografia de leitura,
+   tabelas, blocos de número e as regras de impressão em A4.
+   Diferente da landing, o relatório é claro sobre papel branco,
+   porque nasce para ser impresso.
+   ============================================================ */
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fontes/lato-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/fontes/lato-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Lato';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('../assets/fontes/lato-900.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Permanent Marker';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/fontes/permanent-marker-400.woff2') format('woff2');
+}
+
+:root {
+  /* Marca */
+  --laranja: #f47720;
+  --laranja-esc: #d9611a;
+  --laranja-claro: #ff9a4d;
+  --roxo: #3b1d64;
+  --roxo-esc: #26123f;
+  --roxo-prof: #170a27;
+
+  /* Texto sobre claro */
+  --tinta: #1b1220;
+  --tinta-2: #574a63;
+  --tinta-3: #8c7f96;
+
+  /* Papel */
+  --papel: #ffffff;
+  --papel-2: #fbf7f4;
+  --papel-3: #f4eee9;
+
+  /* Linhas */
+  --linha-luz: rgba(27, 18, 32, 0.1);
+  --linha-luz-2: rgba(27, 18, 32, 0.18);
+
+  /* Semânticas */
+  --verde: #1f8b52;
+  --vermelho: #c2352a;
+
+  --raio: 18px;
+  --raio-sm: 12px;
+
+  /* Largura útil de uma folha A4 com margem de 18mm */
+  --folha: 174mm;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body, h1, h2, h3, h4, p, ul, ol, li, figure, blockquote, table { margin: 0; padding: 0; }
+img, svg { display: block; max-width: 100%; }
+
+body {
+  padding: clamp(24px, 5vw, 56px) clamp(16px, 4vw, 40px);
+  font-family: "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.6;
+  color: var(--tinta);
+  background: var(--papel-3);
+  -webkit-font-smoothing: antialiased;
+}
+
+.marker { font-family: "Permanent Marker", "Lato", cursive; font-weight: 400; }
+.accent { color: var(--laranja); }
+
+/* ---------- Folha ---------- */
+.folha {
+  max-width: var(--folha);
+  margin: 0 auto;
+  background: var(--papel);
+  padding: 18mm;
+  border-radius: var(--raio);
+  box-shadow: 0 24px 48px -24px rgba(23, 10, 39, 0.28);
+}
+
+/* ---------- Capa / cabeçalho ----------
+   Faixa roxa com a logo branca, como o topo do site. */
+.capa {
+  margin: -18mm -18mm 32px;
+  padding: 24px 18mm 22px;
+  background: var(--roxo-prof);
+  border-radius: var(--raio) var(--raio) 0 0;
+  border-bottom: 3px solid var(--laranja);
+  color: #fff;
+}
+.capa img { height: 30px; width: auto; margin-bottom: 18px; }
+.capa .tag {
+  font-size: 8.5pt;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--laranja-claro);
+  margin-bottom: 6px;
+}
+.capa h1 { font-size: 22pt; font-weight: 900; line-height: 1.15; letter-spacing: -0.01em; }
+.capa h1 .marker { font-weight: 400; color: var(--laranja); }
+.capa .sub { margin-top: 8px; font-size: 10pt; color: rgba(255, 255, 255, 0.74); }
+
+/* ---------- Tipografia do corpo ---------- */
+h2 {
+  margin: 34px 0 12px;
+  font-size: 14pt;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  break-after: avoid;
+}
+h2::before {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 3px;
+  margin-bottom: 10px;
+  background: var(--laranja);
+  border-radius: 2px;
+}
+h3 {
+  margin: 22px 0 8px;
+  font-size: 11pt;
+  font-weight: 700;
+  color: var(--tinta-2);
+  break-after: avoid;
+}
+p { margin-bottom: 12px; }
+strong { font-weight: 700; }
+a { color: var(--laranja-esc); }
+
+ul, ol { margin-bottom: 14px; padding-left: 1.1em; }
+li { margin-bottom: 5px; }
+
+/* ---------- Números em destaque ---------- */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 18px 0 24px;
+}
+.kpi {
+  padding: 14px 16px;
+  background: var(--papel-2);
+  border: 1px solid var(--linha-luz);
+  border-top: 3px solid var(--laranja);
+  border-radius: var(--raio-sm);
+  break-inside: avoid;
+}
+.kpi .valor {
+  display: block;
+  font-size: 19pt;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--roxo);
+}
+.kpi .rotulo {
+  display: block;
+  margin-top: 4px;
+  font-size: 8.5pt;
+  color: var(--tinta-3);
+  line-height: 1.35;
+}
+.kpi.destaque { background: var(--roxo-prof); border-color: var(--roxo-prof); }
+.kpi.destaque .valor { color: var(--laranja); }
+.kpi.destaque .rotulo { color: rgba(255, 255, 255, 0.6); }
+
+/* ---------- Tabelas ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 22px;
+  font-size: 9.5pt;
+}
+thead th {
+  text-align: left;
+  padding: 9px 10px;
+  background: var(--roxo-prof);
+  color: #fff;
+  font-weight: 700;
+  font-size: 8.5pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+thead th:first-child { border-radius: 6px 0 0 6px; }
+thead th:last-child  { border-radius: 0 6px 6px 0; }
+tbody td { padding: 9px 10px; border-bottom: 1px solid var(--linha-luz); vertical-align: top; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:nth-child(even) { background: var(--papel-2); }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.pos { color: var(--verde); font-weight: 700; }
+.neg { color: var(--vermelho); font-weight: 700; }
+
+/* ---------- Barra proporcional dentro da tabela ----------
+   Largura vem de --w na própria linha. Fica atrás do número,
+   como um plano de fundo, para a leitura continuar sendo o valor. */
+.barra {
+  display: block;
+  width: var(--w, 0%);
+  height: 6px;
+  margin-bottom: 4px;
+  background: var(--laranja);
+  border-radius: 3px;
+  min-width: 2px;
+}
+
+/* ---------- Criativo em destaque ----------
+   A peça ao lado da leitura do porquê ela funcionou. Em tela e em
+   papel fica lado a lado; abaixo de 560px empilha. */
+.criativo {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 20px;
+  align-items: start;
+  margin: 18px 0 24px;
+  padding: 18px;
+  background: var(--papel-2);
+  border: 1px solid var(--linha-luz);
+  border-radius: var(--raio);
+  break-inside: avoid;
+}
+.criativo img {
+  width: 100%;
+  border-radius: var(--raio-sm);
+  border: 1px solid var(--linha-luz-2);
+}
+.criativo h3 { margin-top: 0; }
+.criativo p:last-child { margin-bottom: 0; }
+.criativo .legenda {
+  margin-top: 8px;
+  font-size: 8pt;
+  color: var(--tinta-3);
+  line-height: 1.35;
+}
+@media (max-width: 560px) {
+  .criativo { grid-template-columns: 1fr; }
+  .criativo img { max-width: 220px; }
+}
+
+/* ---------- Blocos auxiliares ---------- */
+.nota {
+  padding: 12px 16px;
+  margin: 16px 0 22px;
+  background: var(--papel-2);
+  border-left: 3px solid var(--laranja);
+  border-radius: 0 var(--raio-sm) var(--raio-sm) 0;
+  font-size: 9.5pt;
+  color: var(--tinta-2);
+  break-inside: avoid;
+}
+.fonte { margin-top: -12px; font-size: 8.5pt; color: var(--tinta-3); }
+
+.rodape {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--linha-luz);
+  font-size: 8.5pt;
+  color: var(--tinta-3);
+}
+
+/* Quebra de página manual antes de uma seção */
+.pagina-nova { break-before: page; }
+
+/* ---------- Painel ao vivo ----------
+   O relatorio dinamico tem controles e estados que o documento impresso nao
+   tem. Na impressao, os controles somem e sobra o documento. */
+.controles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  margin: 0 0 26px;
+  padding: 16px 18px;
+  background: var(--papel-2);
+  border: 1px solid var(--linha-luz);
+  border-radius: var(--raio);
+}
+.controles label {
+  display: block;
+  font-size: 8.5pt;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+  margin-bottom: 4px;
+}
+.controles input[type="date"], .controles select {
+  font: inherit;
+  font-size: 10pt;
+  padding: 7px 10px;
+  border: 1px solid var(--linha-luz-2);
+  border-radius: var(--raio-sm);
+  background: var(--papel);
+  color: var(--tinta);
+}
+.controles button {
+  font: inherit;
+  font-size: 10pt;
+  font-weight: 700;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: var(--raio-sm);
+  background: var(--laranja);
+  color: #fff;
+  cursor: pointer;
+}
+.controles button:hover { background: var(--laranja-esc); }
+.controles button.secundario { background: transparent; color: var(--tinta-2); border: 1px solid var(--linha-luz-2); }
+
+.aviso {
+  padding: 12px 16px;
+  margin: 0 0 20px;
+  border-radius: var(--raio-sm);
+  font-size: 9.5pt;
+}
+.aviso.erro { background: #fdeceb; color: #8c231b; border-left: 3px solid var(--vermelho); }
+.aviso.espera { background: var(--papel-2); color: var(--tinta-2); border-left: 3px solid var(--laranja); }
+
+.carregando { opacity: 0.45; transition: opacity 0.2s; }
+
+@media print {
+  .controles, .aviso.espera { display: none !important; }
+}
+
+/* ---------- Impressão / PDF ---------- */
+@page {
+  size: A4;
+  margin: 18mm;
+}
+
+@media print {
+  /* Sem isto o navegador descarta os fundos: a faixa roxa da capa,
+     o cabeçalho das tabelas e as barras sairiam em branco. */
+  .capa, thead th, .kpi, .kpi.destaque, .barra, .nota, .criativo, tbody tr:nth-child(even) {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body { padding: 0; background: #fff; }
+  .folha {
+    max-width: none;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .capa { margin: 0 0 32px; padding: 20px 22px; border-radius: 0; }
+  h2, h3, .kpi, .nota, figure { break-inside: avoid; }
+  table { break-inside: auto; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  a { text-decoration: none; }
+}

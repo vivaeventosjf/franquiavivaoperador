@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relatório de mídia · Expansão</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/favicon.svg">
+<link rel="stylesheet" href="relatorio.css">
+</head>
+<body>
+<div class="folha">
+
+  <header class="capa">
+    <img src="../assets/logo-viva-branco-oficial.webp" alt="VIVA Eventos">
+    <div class="tag">Relatório de mídia · Meta Ads + CRM</div>
+    <h1>Captação de <span class="marker">sócios-operadores</span></h1>
+    <p class="sub" id="subtitulo">Carregando o período...</p>
+  </header>
+
+  <div class="controles">
+    <div>
+      <label for="periodo">Período</label>
+      <select id="periodo">
+        <option value="30">Últimos 30 dias</option>
+        <option value="7">Últimos 7 dias</option>
+        <option value="mes">Mês corrente</option>
+        <option value="custom">Escolher datas</option>
+      </select>
+    </div>
+    <div id="campo-de" hidden>
+      <label for="de">De</label>
+      <input type="date" id="de">
+    </div>
+    <div id="campo-ate" hidden>
+      <label for="ate">Até</label>
+      <input type="date" id="ate">
+    </div>
+    <button id="atualizar">Atualizar</button>
+    <button id="imprimir" class="secundario">Salvar em PDF</button>
+  </div>
+
+  <div id="avisos"></div>
+  <div id="conteudo"></div>
+
+  <footer class="rodape">
+    <p><strong>VIVA Eventos · Franqueadora</strong>. Relatório de mídia da captação de sócios-operadores.</p>
+    <p class="fonte">Fontes: Meta Marketing API (investimento, entrega, cliques e visitas) e CRM Kommo (leads, origem por UTM, classificação e etapa comercial). Os leads são cruzados com a mídia pela UTM que a landing grava em cada candidatura: utm_source é a campanha, utm_medium é a praça e utm_campaign é o criativo. Nenhum dado pessoal de candidato consta deste relatório: todos os números são agregados. Documento interno.</p>
+    <p class="fonte" id="carimbo"></p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API = '/.netlify/functions/relatorio-dados';
+  var $ = function (id) { return document.getElementById(id); };
+  var conteudo = $('conteudo');
+  var avisos = $('avisos');
+
+  /* ---------- formatação ---------- */
+
+  var moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  var inteiro = new Intl.NumberFormat('pt-BR');
+
+  function d(n) { return moeda.format(Number(n) || 0); }
+  function i(n) { return inteiro.format(Number(n) || 0); }
+  function p(n) { return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%'; }
+  function dataBR(s) {
+    var x = String(s).split('-');
+    return x[2] + '/' + x[1] + '/' + x[0];
+  }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  /* Custo por algo que não aconteceu não é zero, é inexistente. */
+  function custo(valor, quantidade) {
+    return quantidade ? d(valor) : '<span class="neg">n/d</span>';
+  }
+
+  /* ---------- período ---------- */
+
+  function hojeBR(deslocamento) {
+    var agora = new Date(Date.now() - 3 * 3600 * 1000);
+    if (deslocamento) agora.setUTCDate(agora.getUTCDate() + deslocamento);
+    return agora.toISOString().slice(0, 10);
+  }
+
+  function periodoEscolhido() {
+    var modo = $('periodo').value;
+    if (modo === 'custom') return { de: $('de').value, ate: $('ate').value };
+    if (modo === '7') return { de: hojeBR(-7), ate: hojeBR(0) };
+    if (modo === 'mes') return { de: hojeBR(0).slice(0, 8) + '01', ate: hojeBR(0) };
+    return { de: hojeBR(-30), ate: hojeBR(0) };
+  }
+
+  /* ---------- desenho ---------- */
+
+  function tabela(cabecalhos, linhas) {
+    var th = cabecalhos.map(function (c) {
+      return '<th' + (c.num ? ' class="num"' : '') + '>' + esc(c.t) + '</th>';
+    }).join('');
+    return '<table><thead><tr>' + th + '</tr></thead><tbody>' + linhas.join('') + '</tbody></table>';
+  }
+
+  function desenhar(r) {
+    var t = r.total;
+    var h = [];
+
+    h.push('<h2>O essencial</h2>');
+    h.push('<p>Em ' + r.periodo.dias + ' dias, <strong>' + d(t.gasto) + '</strong> investidos geraram <strong>' +
+      i(t.leads) + ' leads</strong> no CRM, dos quais <strong>' + i(t.completos) +
+      '</strong> preencheram a candidatura completa e <strong>' + i(t.classe_a) +
+      '</strong> foram classificados como A, de prioridade máxima.</p>');
+
+    h.push('<div class="kpis">' +
+      kpi(d(t.gasto), 'Investimento total', true) +
+      kpi(i(t.impressoes), 'Impressões') +
+      kpi(i(t.cliques), 'Cliques no link') +
+      kpi(i(t.leads), 'Leads no CRM') +
+      kpi(i(t.completos), 'Candidaturas completas') +
+      kpi(i(t.classe_a), 'Leads classe A', true) +
+      '</div>');
+
+    /* Funil */
+    h.push('<h2>O caminho até o lead</h2>');
+    h.push('<p>Cada etapa mostra quanto do volume anterior sobreviveu. As três primeiras vêm do Meta, as demais do CRM.</p>');
+    h.push(tabela(
+      [{ t: 'Etapa' }, { t: 'Volume', num: true }, { t: 'Conversão da etapa anterior', num: true }, { t: 'Custo unitário', num: true }],
+      [
+        linhaFunil('Impressões', t.impressoes, null, t.impressoes ? d(t.gasto / t.impressoes * 1000) + ' <span style="color:var(--tinta-3)">/mil</span>' : 'n/d'),
+        linhaFunil('Cliques no link', t.cliques, pct(t.cliques, t.impressoes), custo(t.cpc, t.cliques)),
+        linhaFunil('Visualizações da página', t.visitas, pct(t.visitas, t.cliques), custo(t.gasto / (t.visitas || 1), t.visitas)),
+        linhaFunil('<strong>Leads no CRM</strong>', '<strong>' + i(t.leads) + '</strong>', pct(t.leads, t.visitas), '<strong>' + (t.leads ? d(t.custo_lead) : 'n/d') + '</strong>'),
+        linhaFunil('Candidaturas completas', t.completos, pct(t.completos, t.leads), custo(t.custo_completo, t.completos)),
+        linhaFunil('<strong>Leads classe A</strong>', '<strong>' + i(t.classe_a) + '</strong>', pct(t.classe_a, t.completos), '<strong>' + (t.classe_a ? d(t.custo_classe_a) : 'n/d') + '</strong>')
+      ]
+    ));
+
+    if (t.visitas) {
+      h.push('<p><strong>' + p(t.conversao_visita_lead) + ' de todas as visitas viraram lead</strong> (' +
+        i(t.leads) + ' de ' + i(t.visitas) + '). A mediana de mercado para geração de lead B2B é 3,6%, e a mediana geral de landing pages é 6,6%.</p>');
+    }
+
+    /* Qualidade */
+    var cls = r.classificacao || {};
+    var rotulos = { A: 'A · Prioridade máxima', B: 'B · Alta', C: 'C · Média', D: 'D · Fora do perfil prioritário', WA: 'Contato via WhatsApp' };
+    var linhasCls = ['A', 'B', 'C', 'D', 'WA'].filter(function (k) { return cls[k]; }).map(function (k) {
+      var n = cls[k];
+      return '<tr><td>' + (k === 'A' ? '<strong>' + rotulos[k] + '</strong>' : rotulos[k]) + '</td>' +
+        '<td class="num">' + (k === 'A' ? '<strong>' + i(n) + '</strong>' : i(n)) + '</td>' +
+        '<td class="num">' + p(n / t.leads * 100) + '</td></tr>';
+    });
+    if (linhasCls.length) {
+      h.push('<h2>Qualidade dos leads</h2>');
+      h.push('<p>Volume sem qualidade não constrói unidade. O CRM pontua cada candidato por perfil, histórico no mercado e capital disponível.</p>');
+      h.push(tabela([{ t: 'Classificação' }, { t: 'Leads', num: true }, { t: 'Participação', num: true }], linhasCls));
+      if (t.classe_ab) {
+        h.push('<p><strong>' + p(t.classe_ab / t.leads * 100) + ' da base é A ou B</strong>, o que para uma oferta de sociedade é uma proporção saudável.</p>');
+      }
+    }
+
+    /* Capital declarado: o recorte que explicou metade das perdas em setembro */
+    var cap = r.capital || {};
+    var chavesCap = Object.keys(cap).filter(function (k) { return k && k !== 'não informado'; });
+    if (chavesCap.length) {
+      var linhasCap = chavesCap.sort(function (a, b) { return cap[b] - cap[a]; }).map(function (k) {
+        return '<tr><td>' + esc(k) + '</td><td class="num">' + i(cap[k]) + '</td>' +
+          '<td class="num">' + p(cap[k] / t.completos * 100) + '</td></tr>';
+      });
+      h.push('<h3>Capital declarado por quem completou</h3>');
+      h.push(tabela([{ t: 'Faixa' }, { t: 'Candidatos', num: true }, { t: 'Participação', num: true }], linhasCap));
+    }
+
+    /* Criativos */
+    var cr = (r.criativos || []).filter(function (c) { return c.gasto > 0 || c.leads > 0; });
+    if (cr.length) {
+      var maior = Math.max.apply(null, cr.map(function (c) { return c.gasto; })) || 1;
+      var linhasCr = cr.map(function (c) {
+        return '<tr><td>' + (c.leads ? '<strong>' + esc(c.nome) + '</strong>' : esc(c.nome)) + '</td>' +
+          '<td><span class="barra" style="--w:' + (c.gasto / maior * 100).toFixed(1) + '%"></span>' + d(c.gasto) + '</td>' +
+          '<td class="num">' + p(c.ctr) + '</td>' +
+          '<td class="num">' + (c.leads ? '<strong>' + i(c.leads) + '</strong>' : '<span class="neg">0</span>') + '</td>' +
+          '<td class="num">' + custo(c.custo_lead, c.leads) + '</td>' +
+          '<td class="num">' + i(c.classe_a) + '</td></tr>';
+      });
+      h.push('<h2 class="pagina-nova">Desempenho por criativo</h2>');
+      h.push('<p>Com atribuição real: cada lead do CRM carrega a UTM do anúncio que o originou.</p>');
+      h.push(tabela(
+        [{ t: 'Criativo' }, { t: 'Investimento' }, { t: 'CTR', num: true }, { t: 'Leads', num: true }, { t: 'Custo/lead', num: true }, { t: 'Classe A', num: true }],
+        linhasCr
+      ));
+
+      var vazios = cr.filter(function (c) { return c.gasto > 0 && !c.leads; });
+      if (vazios.length) {
+        var desperdicio = vazios.reduce(function (s, c) { return s + c.gasto; }, 0);
+        h.push('<div class="nota"><strong>' + vazios.length + ' criativo' + (vazios.length > 1 ? 's' : '') +
+          ' sem um único lead.</strong> ' + esc(vazios.map(function (c) { return c.nome; }).join(', ')) +
+          ' consumiram <strong>' + d(desperdicio) + '</strong>, ou ' + p(desperdicio / t.gasto * 100) +
+          ' do investimento do período, sem retorno mensurável.</div>');
+      }
+    }
+
+    /* Praças */
+    var pr = (r.pracas || []).filter(function (c) { return c.gasto > 0 || c.leads > 0; });
+    if (pr.length) {
+      var linhasPr = pr.slice().sort(function (a, b) {
+        /* Quem não gerou lead vai para o fim, e não para o topo por ter custo 0. */
+        if (!a.leads && !b.leads) return b.gasto - a.gasto;
+        if (!a.leads) return 1;
+        if (!b.leads) return -1;
+        return a.custo_lead - b.custo_lead;
+      }).map(function (c) {
+        return '<tr><td><strong>' + esc(c.nome) + '</strong></td>' +
+          '<td class="num">' + d(c.gasto) + '</td>' +
+          '<td class="num">' + i(c.leads) + '</td>' +
+          '<td class="num">' + custo(c.custo_lead, c.leads) + '</td>' +
+          '<td class="num">' + i(c.classe_a) + '</td>' +
+          '<td class="num">' + custo(c.custo_classe_a, c.classe_a) + '</td></tr>';
+      });
+      h.push('<h2>Desempenho por praça</h2>');
+      h.push('<p>Ordenado do menor para o maior custo por lead.</p>');
+      h.push(tabela(
+        [{ t: 'Praça' }, { t: 'Investido', num: true }, { t: 'Leads', num: true }, { t: 'Custo/lead', num: true }, { t: 'Classe A', num: true }, { t: 'Custo/lead A', num: true }],
+        linhasPr
+      ));
+    }
+
+    /* Cidade real contra praça anunciada */
+    var cid = r.cidades_por_praca || {};
+    var chavesCid = Object.keys(cid);
+    if (chavesCid.length) {
+      var linhasCid = chavesCid.map(function (praca) {
+        var mapa = cid[praca];
+        var total = Object.keys(mapa).reduce(function (s, k) { return s + mapa[k]; }, 0);
+        var ordenado = Object.keys(mapa).sort(function (a, b) { return mapa[b] - mapa[a]; });
+        /* Aderência: quanto do que veio é da cidade que dá nome à praça. */
+        var alvo = ordenado.filter(function (c) { return casaComPraca(c, praca); })
+          .reduce(function (s, c) { return s + mapa[c]; }, 0);
+        var ad = total ? alvo / total * 100 : 0;
+        return '<tr><td>' + esc(praca) + '</td><td class="num">' + i(total) + '</td>' +
+          '<td>' + ordenado.map(function (c) { return esc(c) + ' (' + mapa[c] + ')'; }).join(', ') + '</td>' +
+          '<td class="num"><span class="' + (ad >= 70 ? 'pos' : 'neg') + '">' + Math.round(ad) + '%</span></td></tr>';
+      });
+      h.push('<h2>Cidade declarada contra praça anunciada</h2>');
+      h.push('<p>Onde a aderência é baixa, o anúncio está atraindo gente de fora do alvo. Pode ser desperdício, ou pode ser uma praça nova aparecendo sozinha.</p>');
+      h.push(tabela(
+        [{ t: 'Anúncio veiculado para' }, { t: 'Leads', num: true }, { t: 'Cidades que responderam' }, { t: 'Aderência', num: true }],
+        linhasCid
+      ));
+    }
+
+    /* Situação comercial */
+    var et = r.etapas || {};
+    var chavesEt = Object.keys(et).sort(function (a, b) { return et[b] - et[a]; });
+    if (chavesEt.length) {
+      var linhasEt = chavesEt.map(function (k) {
+        return '<tr><td>' + esc(k) + '</td><td class="num">' + i(et[k]) + '</td>' +
+          '<td class="num">' + p(et[k] / t.leads * 100) + '</td></tr>';
+      });
+      h.push('<h2>Situação comercial</h2>');
+      h.push('<p>Onde a base está hoje, dentro do funil de vendas.</p>');
+      h.push(tabela([{ t: 'Etapa' }, { t: 'Leads', num: true }, { t: 'Participação', num: true }], linhasEt));
+      if (t.perdidos) {
+        h.push('<p><strong>' + i(t.perdidos) + ' leads perdidos</strong>, ou ' +
+          p(t.perdidos / t.leads * 100) + ' da base.</p>');
+      }
+    }
+
+    h.push('<div class="nota"><strong>Sobre a confiança destes números.</strong> O volume de mídia vem da API da Meta. Os leads, a origem por UTM, a classificação e a etapa vêm do CRM. Períodos curtos e bases pequenas oscilam bastante: com poucos leads por praça, as comparações servem como direção, não como medida exata.</div>');
+
+    conteudo.innerHTML = h.join('\n');
+    $('subtitulo').textContent = 'Campanhas de expansão · ' + dataBR(r.periodo.de) + ' a ' + dataBR(r.periodo.ate) + ' · ' + r.periodo.dias + ' dias';
+  }
+
+  function kpi(valor, rotulo, destaque) {
+    return '<div class="kpi' + (destaque ? ' destaque' : '') + '"><span class="valor">' +
+      valor + '</span><span class="rotulo">' + esc(rotulo) + '</span></div>';
+  }
+
+  function linhaFunil(etapa, volume, conversao, custoUnit) {
+    return '<tr><td>' + etapa + '</td>' +
+      '<td class="num">' + (typeof volume === 'number' ? i(volume) : volume) + '</td>' +
+      '<td class="num">' + (conversao == null ? 'n/d' : conversao) + '</td>' +
+      '<td class="num">' + custoUnit + '</td></tr>';
+  }
+
+  function pct(a, b) {
+    if (!b) return 'n/d';
+    var v = a / b * 100;
+    return '<span class="' + (v >= 50 ? 'pos' : '') + '">' + p(v) + '</span>';
+  }
+
+  /* "Belém - PA" casa com a cidade "Belém"; acento e caixa não atrapalham. */
+  function casaComPraca(cidade, praca) {
+    var limpa = function (s) {
+      return String(s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .toLowerCase().replace(/\s*-\s*[a-z]{2}\s*$/, '').trim();
+    };
+    return limpa(cidade) === limpa(praca);
+  }
+
+  /* ---------- carregamento ---------- */
+
+  function aviso(tipo, texto) {
+    avisos.innerHTML = '<div class="aviso ' + tipo + '">' + esc(texto) + '</div>';
+  }
+
+  async function carregar(recarregar) {
+    var per = periodoEscolhido();
+    if (!per.de || !per.ate) { aviso('erro', 'Escolha as duas datas.'); return; }
+    if (per.de > per.ate) { aviso('erro', 'A data inicial é depois da final.'); return; }
+
+    conteudo.classList.add('carregando');
+    aviso('espera', 'Buscando os dados no Meta e no CRM...');
+
+    try {
+      var url = API + '?de=' + per.de + '&ate=' + per.ate + (recarregar ? '&recarregar=1' : '');
+      var r = await fetch(url);
+      var corpo = await r.json();
+      if (!corpo.ok) throw new Error(corpo.error || 'Falha ao buscar os dados');
+
+      desenhar(corpo.dados);
+
+      var quando = new Date(corpo.dados.gerado_em);
+      $('carimbo').textContent = 'Dados apurados em ' + quando.toLocaleString('pt-BR') +
+        (corpo.cache ? ' (do cache)' : ' (consulta nova)') + '.';
+      if (corpo.vencido) {
+        aviso('erro', 'Não consegui atualizar agora, então estes números são os da última apuração que deu certo. Tente de novo em alguns minutos.');
+      } else {
+        avisos.innerHTML = '';
+      }
+    } catch (err) {
+      aviso('erro', 'Não deu para carregar: ' + err.message);
+      conteudo.innerHTML = '';
+    } finally {
+      conteudo.classList.remove('carregando');
+    }
+  }
+
+  /* ---------- ligações ---------- */
+
+  $('periodo').addEventListener('change', function () {
+    var custom = this.value === 'custom';
+    $('campo-de').hidden = !custom;
+    $('campo-ate').hidden = !custom;
+    if (custom) {
+      if (!$('de').value) $('de').value = hojeBR(-30);
+      if (!$('ate').value) $('ate').value = hojeBR(0);
+    } else {
+      carregar(false);
+    }
+  });
+  $('atualizar').addEventListener('click', function () { carregar(true); });
+  $('imprimir').addEventListener('click', function () { window.print(); });
+
+  /* O período também pode vir pela URL, para mandar um link já filtrado. */
+  var q = new URLSearchParams(location.search);
+  if (q.get('de') && q.get('ate')) {
+    $('periodo').value = 'custom';
+    $('campo-de').hidden = false;
+    $('campo-ate').hidden = false;
+    $('de').value = q.get('de');
+    $('ate').value = q.get('ate');
+  }
+
+  carregar(false);
+})();
+</script>
+</body>
+</html>

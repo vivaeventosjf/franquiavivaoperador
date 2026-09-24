@@ -73,3 +73,24 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
     X-Robots-Tag = "noindex, nofollow"
+
+# ------------------------------------------------------------------
+# Relatorio de midia ao vivo
+# A pagina /relatorio le a function relatorio-dados, que cruza a API da
+# Meta com o CRM Kommo. A coleta agendada roda de madrugada e deixa o
+# cache pronto, entao quem abre a pagina nao espera pelas duas APIs.
+#
+# Precisa destas variaveis em Site configuration > Environment variables:
+#   META_TOKEN          token com permissao ads_read
+#   META_AD_ACCOUNT_ID  id da conta de anuncios
+#   KOMMO_SUBDOMAIN     ja configurada, usada pela function kommo
+#   KOMMO_TOKEN         ja configurada, usada pela function kommo
+# ------------------------------------------------------------------
+[functions."relatorio-coleta"]
+  schedule = "0 8 * * *"
+
+[[headers]]
+  for = "/relatorio/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    X-Robots-Tag = "noindex, nofollow"
