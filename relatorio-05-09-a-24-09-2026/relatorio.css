@@ -68,8 +68,9 @@
   --raio: 18px;
   --raio-sm: 12px;
 
-  /* Largura útil de uma folha A4 com margem de 18mm */
-  --folha: 174mm;
+  /* Na tela o documento respira numa largura maior; na impressão volta a ser
+     a largura útil de uma folha A4 com margem de 18mm (174mm). */
+  --folha: 1180px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -78,7 +79,7 @@ body, h1, h2, h3, h4, p, ul, ol, li, figure, blockquote, table { margin: 0; padd
 img, svg { display: block; max-width: 100%; }
 
 body {
-  padding: clamp(24px, 5vw, 56px) clamp(16px, 4vw, 40px);
+  padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 32px);
   font-family: "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 10.5pt;
   line-height: 1.6;
@@ -90,23 +91,48 @@ body {
 .marker { font-family: "Permanent Marker", "Lato", cursive; font-weight: 400; }
 .accent { color: var(--laranja); }
 
-/* ---------- Folha ---------- */
+/* ---------- Folha ----------
+   Na tela é só o container que centraliza e segura a capa; o fundo branco
+   passou para os blocos, que é o que dá a separação visual. */
 .folha {
   max-width: var(--folha);
   margin: 0 auto;
+}
+
+/* ---------- Blocos ----------
+   Cada assunto num cartão próprio. Numa tela larga isso separa a leitura
+   melhor que um documento corrido, e na impressão eles voltam a ser seções
+   de um texto só. */
+.blocos {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+.bloco {
   background: var(--papel);
-  padding: 18mm;
+  border: 1px solid var(--linha-luz);
   border-radius: var(--raio);
-  box-shadow: 0 24px 48px -24px rgba(23, 10, 39, 0.28);
+  padding: 28px 32px 30px;
+  box-shadow: 0 18px 40px -28px rgba(23, 10, 39, 0.22);
+}
+.bloco > h2:first-child { margin-top: 0; }
+.bloco > :last-child { margin-bottom: 0; }
+
+/* Numa tela bem larga, dois blocos curtos cabem lado a lado sem atrapalhar a
+   ordem de leitura, porque cada um é um assunto fechado. */
+@media (min-width: 1000px) {
+  .blocos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* O padrão é ocupar a linha inteira: só encurta quem for marcado. */
+  .bloco { grid-column: 1 / -1; }
+  .bloco.meio { grid-column: auto; }
 }
 
 /* ---------- Capa / cabeçalho ----------
    Faixa roxa com a logo branca, como o topo do site. */
 .capa {
-  margin: -18mm -18mm 32px;
-  padding: 24px 18mm 22px;
+  padding: 30px 32px 26px;
   background: var(--roxo-prof);
-  border-radius: var(--raio) var(--raio) 0 0;
+  border-radius: var(--raio);
   border-bottom: 3px solid var(--laranja);
   color: #fff;
 }
@@ -119,7 +145,7 @@ body {
   color: var(--laranja-claro);
   margin-bottom: 6px;
 }
-.capa h1 { font-size: 22pt; font-weight: 900; line-height: 1.15; letter-spacing: -0.01em; }
+.capa h1 { font-size: 26pt; font-weight: 900; line-height: 1.12; letter-spacing: -0.01em; }
 .capa h1 .marker { font-weight: 400; color: var(--laranja); }
 .capa .sub { margin-top: 8px; font-size: 10pt; color: rgba(255, 255, 255, 0.74); }
 
@@ -157,8 +183,8 @@ li { margin-bottom: 5px; }
 /* ---------- Números em destaque ---------- */
 .kpis {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
   margin: 18px 0 24px;
 }
 .kpi {
@@ -193,7 +219,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin: 12px 0 22px;
-  font-size: 9.5pt;
+  font-size: 10pt;
 }
 thead th {
   text-align: left;
@@ -232,7 +258,7 @@ tbody tr:nth-child(even) { background: var(--papel-2); }
    papel fica lado a lado; abaixo de 560px empilha. */
 .criativo {
   display: grid;
-  grid-template-columns: 150px 1fr;
+  grid-template-columns: 200px 1fr;
   gap: 20px;
   align-items: start;
   margin: 18px 0 24px;
@@ -274,9 +300,12 @@ tbody tr:nth-child(even) { background: var(--papel-2); }
 .fonte { margin-top: -12px; font-size: 8.5pt; color: var(--tinta-3); }
 
 .rodape {
-  margin-top: 40px;
-  padding-top: 16px;
-  border-top: 1px solid var(--linha-luz);
+  margin-top: 18px;
+  padding: 20px 32px 24px;
+  background: var(--papel);
+  border: 1px solid var(--linha-luz);
+  border-top: 3px solid var(--laranja);
+  border-radius: var(--raio);
   font-size: 8.5pt;
   color: var(--tinta-3);
 }
@@ -291,6 +320,32 @@ tbody tr:nth-child(even) { background: var(--papel-2); }
 }
 
 @media print {
+  /* Na impressão o layout em cartões atrapalha: volta a ser um documento
+     contínuo, na largura da folha. */
+  .folha { max-width: none; }
+  .blocos { display: block; margin-top: 0; }
+  .bloco {
+    grid-column: auto !important;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    margin-bottom: 18px;
+    break-inside: auto;
+  }
+  .bloco > h2:first-child { margin-top: 26px; }
+  .rodape {
+    background: none;
+    border: 0;
+    border-top: 1px solid var(--linha-luz);
+    border-radius: 0;
+    padding: 16px 0 0;
+    margin-top: 32px;
+  }
+  table { font-size: 9.5pt; }
+  .criativo { grid-template-columns: 150px 1fr; }
+
   /* Sem isto o navegador descarta os fundos: a faixa roxa da capa,
      o cabeçalho das tabelas e as barras sairiam em branco. */
   .capa, thead th, .kpi, .kpi.destaque, .barra, .nota, .criativo, tbody tr:nth-child(even) {
@@ -304,7 +359,8 @@ tbody tr:nth-child(even) { background: var(--papel-2); }
     border-radius: 0;
     box-shadow: none;
   }
-  .capa { margin: 0 0 32px; padding: 20px 22px; border-radius: 0; }
+  .capa { margin: 0 0 24px; padding: 20px 22px; border-radius: 0; }
+  .capa h1 { font-size: 22pt; }
   h2, h3, .kpi, .nota, figure { break-inside: avoid; }
   table { break-inside: auto; }
   thead { display: table-header-group; }
