@@ -60,3 +60,16 @@
   for = "/"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+# ------------------------------------------------------------------
+# Relatorios
+# Documento interno servido por link direto. Nao entra em buscador
+# (X-Robots-Tag, alem da meta tag na propria pagina) e nao pode ficar
+# congelado no cache: o CSS dele nao e versionado por query, entao a
+# regra geral de /*.css valeria um ano e uma correcao nunca chegaria.
+# ------------------------------------------------------------------
+[[headers]]
+  for = "/relatorio-05-09-a-24-09-2026/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    X-Robots-Tag = "noindex, nofollow"
