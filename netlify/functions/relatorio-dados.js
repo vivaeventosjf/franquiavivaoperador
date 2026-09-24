@@ -33,6 +33,25 @@ exports.handler = async function (event) {
   }
 
   const q = event.queryStringParameters || {};
+
+  /* Diagnóstico de configuração. Responde apenas se a variável existe e
+     quantos caracteres tem, nunca o valor: serve para descobrir se uma chave
+     foi salva com nome errado ou ficou fora do contexto das funções. */
+  if (q.checar === '1') {
+    const nomes = ['META_TOKEN', 'META_AD_ACCOUNT_ID', 'META_API_VERSION',
+      'KOMMO_SUBDOMAIN', 'KOMMO_TOKEN'];
+    const situacao = {};
+    nomes.forEach(function (n) {
+      const v = process.env[n];
+      situacao[n] = v ? { presente: true, caracteres: v.length } : { presente: false };
+    });
+    /* Qualquer chave que contenha META ou KOMMO, para revelar erro de digitação
+       no nome. Só os nomes, nunca os valores. */
+    situacao._chaves_parecidas = Object.keys(process.env)
+      .filter(function (k) { return /meta|kommo|ads?_/i.test(k); }).sort();
+    return resposta(200, { ok: true, configuracao: situacao });
+  }
+
   const de = dataValida(q.de) ? q.de : hojeBR(-30);
   const ate = dataValida(q.ate) ? q.ate : hojeBR(0);
 
