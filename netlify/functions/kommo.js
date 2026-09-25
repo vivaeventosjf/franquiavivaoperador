@@ -204,60 +204,130 @@ exports.handler = async function (event) {
  * Cidade e estado
  * A pergunta do formulário é texto livre ("Em qual cidade você quer operar?"),
  * então aqui a gente tenta separar em duas colunas para o CRM.
+ *
+ * O CRM recebe o nome oficial do município, acentuado ("Belem" vira "Belém"),
+ * e o estado por extenso ("Pará", não "PA"), que é como o time filtra.
+ * Quando a pessoa escreve só a cidade, o estado sai da lista do IBGE; para
+ * nomes que se repetem em vários estados vale o município mais populoso.
  * ============================================================ */
-const UFS = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
-  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE',
-  'TO'
-];
+const MUNICIPIOS = require('./lib/municipios');
 
-const ESTADOS = {
-  ACRE: 'AC', ALAGOAS: 'AL', AMAPA: 'AP', AMAZONAS: 'AM', BAHIA: 'BA',
-  CEARA: 'CE', 'DISTRITO FEDERAL': 'DF', 'ESPIRITO SANTO': 'ES', GOIAS: 'GO',
-  MARANHAO: 'MA', 'MATO GROSSO': 'MT', 'MATO GROSSO DO SUL': 'MS',
-  'MINAS GERAIS': 'MG', PARA: 'PA', PARAIBA: 'PB', PARANA: 'PR',
-  PERNAMBUCO: 'PE', PIAUI: 'PI', 'RIO DE JANEIRO': 'RJ',
-  'RIO GRANDE DO NORTE': 'RN', 'RIO GRANDE DO SUL': 'RS', RONDONIA: 'RO',
-  RORAIMA: 'RR', 'SANTA CATARINA': 'SC', 'SAO PAULO': 'SP', SERGIPE: 'SE',
-  TOCANTINS: 'TO'
+const NOMES_UF = {
+  AC: 'Acre', AL: 'Alagoas', AP: 'Amapá', AM: 'Amazonas', BA: 'Bahia',
+  CE: 'Ceará', DF: 'Distrito Federal', ES: 'Espírito Santo', GO: 'Goiás',
+  MA: 'Maranhão', MT: 'Mato Grosso', MS: 'Mato Grosso do Sul',
+  MG: 'Minas Gerais', PA: 'Pará', PB: 'Paraíba', PR: 'Paraná',
+  PE: 'Pernambuco', PI: 'Piauí', RJ: 'Rio de Janeiro',
+  RN: 'Rio Grande do Norte', RS: 'Rio Grande do Sul', RO: 'Rondônia',
+  RR: 'Roraima', SC: 'Santa Catarina', SP: 'São Paulo', SE: 'Sergipe',
+  TO: 'Tocantins'
 };
+
+/* Nome do estado escrito por extenso (com ou sem acento) de volta para a UF. */
+const ESTADOS = {};
+Object.keys(NOMES_UF).forEach(function (uf) {
+  ESTADOS[chave(NOMES_UF[uf])] = uf;
+});
 
 function separarLocal(praca) {
   const vazio = { cidade: '', estado: '' };
   if (!praca) return vazio;
 
-  /* Separadores usuais: "Juiz de Fora, MG", "Juiz de Fora - MG",
-     "Juiz de Fora / MG", "Juiz de Fora | MG". */
-  const partes = String(praca).split(/[,\/|]|\s-\s/);
+  const texto = String(praca).trim();
+  if (!texto) return vazio;
 
+  /* Primeiro o texto inteiro: municípios que terminam em nome de estado, como
+     "Conceição do Pará" (MG) ou "Santa Isabel do Pará" (PA), não podem ser
+     partidos ao meio. */
+  const inteiro = buscarMunicipio(texto);
+  if (inteiro) return montarLocal(inteiro, '');
+
+  /* Só o estado, sem cidade: "Minas Gerais", "MG". */
+  const soEstado = paraUF(texto);
+  if (soEstado) return { cidade: '', estado: NOMES_UF[soEstado] };
+
+  const separado = separarUF(texto);
+  const municipio = buscarMunicipio(separado.cidade);
+  if (municipio) return montarLocal(municipio, separado.uf);
+
+  /* Não é município conhecido: grava o que a pessoa escreveu, sem inventar. */
+  return {
+    cidade: separado.cidade,
+    estado: separado.uf ? NOMES_UF[separado.uf] : ''
+  };
+}
+
+/* Tira do fim do texto a UF ou o nome do estado, se houver.
+   Aceita "Juiz de Fora, MG", "Juiz de Fora - MG", "Juiz de Fora / MG",
+   "Juiz de Fora | MG", "Juiz de Fora MG" e "Juiz de Fora Minas Gerais". */
+function separarUF(texto) {
+  const partes = texto.split(/[,\/|]|\s*-\s*/);
   if (partes.length > 1) {
     const fim = partes.pop().trim();
-    const cidade = partes.join(', ').trim();
     const uf = paraUF(fim);
-    if (uf) return { cidade: cidade, estado: uf };
-    /* Não reconheceu o estado: devolve tudo como cidade, sem inventar. */
-    return { cidade: String(praca).trim(), estado: '' };
+    if (uf) return arrumar(partes.join(', ').trim(), uf, texto);
   }
 
-  /* Sem separador: tenta uma sigla solta no fim, como "Juiz de Fora MG". */
-  const texto = String(praca).trim();
-  const ultima = texto.split(/\s+/).pop();
-  const uf = ultima && ultima.length === 2 ? paraUF(ultima) : '';
-
-  if (uf) {
-    return {
-      cidade: texto.slice(0, texto.length - ultima.length).trim(),
-      estado: uf
-    };
+  /* Sem separador (ou com um separador que não isolou o estado, como em
+     "Ceará-Mirim RN"), o estado pode estar solto no fim da frase. "Rio Grande
+     do Sul" tem quatro palavras, então tenta de trás para a frente. */
+  const palavras = texto.split(/\s+/);
+  for (var n = 1; n <= 4 && n < palavras.length; n++) {
+    const uf = paraUF(palavras.slice(palavras.length - n).join(' '));
+    if (!uf) continue;
+    const cidade = palavras.slice(0, palavras.length - n).join(' ')
+      .replace(/[\s,\/|-]+$/, '');
+    return arrumar(cidade, uf, texto);
   }
 
-  return { cidade: texto, estado: '' };
+  return { cidade: texto, uf: '' };
+}
+
+/* Sobra terminada em preposição quer dizer que o nome do estado era parte do
+   nome da cidade, e não o estado: "Santa Izabel do Pará" não é "Santa Izabel
+   do" no Pará. Nesses casos a cidade fica inteira e a UF entra como palpite
+   (que ali acerta, porque o município leva o nome do próprio estado). */
+function arrumar(cidade, uf, texto) {
+  if (/\s(?:de|do|da|dos|das|d)$/i.test(cidade)) return { cidade: texto, uf: uf };
+  return { cidade: cidade, uf: uf };
+}
+
+/* Devolve "Nome oficial|UF principal[|outras UFs]" do município, ou ''. */
+function buscarMunicipio(nome) {
+  return MUNICIPIOS[chave(nome)] || '';
+}
+
+/* Junta o município do IBGE com a UF que a pessoa escreveu, se escreveu.
+   A UF declarada manda: quem digita "Belém PB" quer a Belém da Paraíba. */
+function montarLocal(registro, ufDeclarada) {
+  const campos = registro.split('|');
+  const nome = campos[0];
+  const principal = campos[1];
+
+  /* Sem UF declarada, vale o homônimo mais populoso ("Belém" sozinho é o do
+     Pará). Com UF declarada ela manda, mesmo que o IBGE não tenha esse
+     município nesse estado: o que a pessoa escreveu sobre a própria praça
+     vale mais que o palpite da lista. */
+  const uf = ufDeclarada || principal;
+
+  return { cidade: nome, estado: NOMES_UF[uf] || '' };
 }
 
 function paraUF(texto) {
-  const limpo = normalizar(texto).replace(/[^A-Z ]/g, '').trim();
-  if (limpo.length === 2 && UFS.indexOf(limpo) !== -1) return limpo;
+  const limpo = chave(texto);
+  if (limpo.length === 2 && NOMES_UF[limpo]) return limpo;
   return ESTADOS[limpo] || '';
+}
+
+/* Mesma normalização usada para gerar lib/municipios.js: maiúsculas, sem
+   acento e sem pontuação, para "Sao Luis", "SÃO LUÍS" e "Sao  Luis" caírem
+   todos na mesma chave. */
+function chave(texto) {
+  return normalizar(texto)
+    .replace(/['`´^~]/g, '')
+    .replace(/[^A-Z0-9 ]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /* ============================================================

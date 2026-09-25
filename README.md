@@ -21,6 +21,7 @@ fora do mercado são aceitos, mas classificados abaixo.
 | `config.js` | **Único arquivo que precisa ser editado** para publicar. |
 | `google-apps-script.gs` | Backend que grava as candidaturas numa planilha do Google. |
 | `netlify/functions/kommo.js` | Ponte com o Kommo. Roda no servidor, guarda o token. |
+| `netlify/functions/lib/municipios.js` | Lista de municípios do IBGE, usada para preencher cidade e estado no CRM. Gerada, não editar à mão. |
 | `netlify.toml` | Configuração de publicação e de funções no Netlify. |
 | `assets/` | Logo VIVA vetorizada (SVG), PNGs e favicon. |
 
@@ -172,13 +173,42 @@ nasceria sem opções e seria inútil. Ele só é preenchido se já existir na c
 ### Cidade e estado
 
 A pergunta 3 é texto livre ("Em qual cidade você quer operar?"), então a função
-separa em duas colunas. Ela entende `Juiz de Fora, MG`, `Juiz de Fora - MG`,
-`São Paulo/SP`, `Belo Horizonte | Minas Gerais` e até `Maceió AL`, aceitando
-tanto a sigla quanto o nome por extenso do estado.
+separa em duas colunas e normaliza as duas contra a lista de municípios do IBGE
+(`netlify/functions/lib/municipios.js`):
 
-Quando não dá para reconhecer o estado com segurança, o campo `Estado` fica
-vazio e a cidade recebe o texto inteiro. O campo `Praça pretendida` sempre
-guarda o que a pessoa escreveu, sem alteração.
+- **Cidade** recebe o nome oficial, acentuado. `belem`, `Belem-PA` e
+  `BELÉM, PARÁ` viram todos `Belém`.
+- **Estado** recebe o nome por extenso, `Pará`, nunca a sigla. É assim que o
+  time filtra no CRM.
+
+Ela entende `Juiz de Fora, MG`, `Juiz de Fora - MG`, `São Paulo/SP`,
+`Belo Horizonte | Minas Gerais`, `Maceió AL` e `Ceará-Mirim RN`, com a sigla ou
+o nome do estado por extenso.
+
+**Quando a pessoa escreve só a cidade**, o estado vem da lista. Para nomes que
+se repetem em vários estados vale o município mais populoso: `Belém` sozinho
+vira Pará (1,3 mi), não Belém/PB (17 mil); `Campo Grande` vira Mato Grosso do
+Sul; `Santa Luzia`, Minas Gerais. Se a pessoa disser a UF, a UF dela manda —
+`Belém PB` grava Paraíba.
+
+Quando nem assim dá para reconhecer (frase solta como "Uberlândia MG e região",
+cidade escrita errada), o campo `Estado` fica vazio e a cidade recebe o texto
+como veio. O campo `Praça pretendida` sempre guarda o que a pessoa escreveu,
+sem alteração.
+
+#### Regerar a lista de municípios
+
+Ela só muda quando o IBGE cria ou renomeia município — raro. Para atualizar,
+baixe os dois JSON e regenere:
+
+```bash
+curl -s "https://servicodados.ibge.gov.br/api/v1/localidades/municipios" -o mun.json
+curl -g -s "https://servicodados.ibge.gov.br/api/v3/agregados/4714/periodos/2022/variaveis/93?localidades=N6[all]" -o pop.json
+```
+
+O primeiro dá nome oficial e UF; o segundo, a população do Censo 2022, que é o
+desempate dos homônimos. O arquivo gerado é um `module.exports` de
+`"NOME NORMALIZADO": "Nome oficial|UF[|outras UFs com o mesmo nome]"`.
 
 Se o token não tiver permissão de administrador, a criação falha em silêncio e o
 lead entra assim mesmo, com as respostas na nota. O erro fica no log de funções
