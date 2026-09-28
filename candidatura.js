@@ -259,7 +259,13 @@
   }
 
   function maskPhone(value) {
-    var d = value.replace(/\D/g, '').slice(0, 11);
+    var d = value.replace(/\D/g, '');
+
+    /* Muita gente escreve o código do país. Nenhum número nacional passa de
+       11 dígitos, então um 55 na frente de 12 ou 13 só pode ser o +55 — e sem
+       tirar ele a máscara leria o 55 como DDD e cortaria o fim do número. */
+    if (d.length > 11 && d.slice(0, 2) === '55') d = d.slice(2);
+    d = d.slice(0, 11);
     if (d.length === 0) return '';
     if (d.length <= 2) return '(' + d;
     var split = d.length > 10 ? 7 : 6;

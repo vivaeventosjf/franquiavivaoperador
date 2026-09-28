@@ -115,7 +115,9 @@ exports.handler = async function (event) {
   }
 
   const nome = (dados.nome || '').trim() || 'Candidato sem nome';
-  const telefone = (dados.whatsapp || '').trim();
+  /* O número vai para o CRM já arrumado; dados.whatsapp segue cru para a
+     nota, que é onde o vendedor confere o que a pessoa realmente digitou. */
+  const telefone = normalizarTelefone(dados.whatsapp);
   const praca = (dados.praca || '').trim();
 
   /* Campos derivados: o formulário pede a praça em texto livre e o WhatsApp,
@@ -328,6 +330,60 @@ function chave(texto) {
     .replace(/[^A-Z0-9 ]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/* ============================================================
+ * Telefone
+ * O campo é texto livre e muita gente escreve o código do país. Sem tratar
+ * isso, "+55 91 98219-1573" chega ao CRM como 13 dígitos e o Kommo lê os dois
+ * primeiros como DDD, virando "(55) 91982-1915" — um número de outro estado,
+ * e inválido. Aqui o número é reduzido a DDD + assinante e devolvido sempre
+ * com o +55 explícito, que não tem como ser confundido com DDD.
+ * ============================================================ */
+
+/* DDDs que existem de fato. 55 é um deles (Santa Maria, RS), então um número
+   de 11 dígitos começando em 55 é ambíguo e fica como está: só dá para tirar
+   o código do país quando sobram dígitos demais. */
+const DDDS = [
+  11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35,
+  37, 38, 41, 42, 43, 44, 45, 46, 47, 48, 49, 51, 53, 54, 55, 61, 62, 63, 64,
+  65, 66, 67, 68, 69, 71, 73, 74, 75, 77, 79, 81, 82, 83, 84, 85, 86, 87, 88,
+  89, 91, 92, 93, 94, 95, 96, 97, 98, 99
+];
+
+function normalizarTelefone(bruto) {
+  const cru = String(bruto || '').trim();
+
+  /* "+" de outro país (+1, +351): não é nosso formato, fica como veio. Sem
+     isto, "+1 202 555 0134" tem 11 dígitos e passaria por celular do DDD 12. */
+  if (/^\+/.test(cru) && !/^\+\s*55/.test(cru)) return cru;
+
+  var d = cru.replace(/\D/g, '');
+  if (!d) return '';
+
+  /* 12 ou 13 dígitos começando em 55: o 55 só pode ser o código do país,
+     porque nenhum número nacional passa de 11 dígitos. */
+  if (d.length > 11 && d.slice(0, 2) === '55') d = d.slice(2);
+
+  /* "0" de operadora ou de DDD ("0 91 98219-1573"). */
+  d = d.replace(/^0+/, '');
+
+  const ddd = Number(d.slice(0, 2));
+  const assinante = d.slice(2);
+
+  /* Não é um número brasileiro reconhecível (estrangeiro, digitado pela
+     metade, DDD que não existe): devolve o que a pessoa escreveu, sem
+     estragar. O vendedor resolve olhando, e a nota guarda o original. */
+  /* Celular brasileiro tem 9 dígitos e começa em 9; fixo tem 8 e começa de 2
+     a 5. O que não se encaixa é outra coisa, e outra coisa não se conserta. */
+  const formatoBR = (assinante.length === 9 && assinante.charAt(0) === '9') ||
+    (assinante.length === 8 && /^[2-5]/.test(assinante));
+
+  if (DDDS.indexOf(ddd) === -1 || !formatoBR) return cru;
+
+  const meio = assinante.length === 9 ? 5 : 4;
+  return '+55 ' + d.slice(0, 2) + ' ' +
+    assinante.slice(0, meio) + '-' + assinante.slice(meio);
 }
 
 /* ============================================================

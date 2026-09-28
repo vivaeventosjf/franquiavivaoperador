@@ -143,9 +143,9 @@ As respostas do formulário entram de duas formas, de propósito:
 | Histórico no mercado | pergunta 5 |
 | Capital próprio | pergunta 6 |
 | Praça pretendida | pergunta 3, como a pessoa escreveu |
-| Cidade | separada da praça |
-| Estado | sigla, separada da praça |
-| Telefone | o mesmo WhatsApp da pergunta 2 |
+| Cidade | separada da praça, com o nome oficial do IBGE |
+| Estado | separado da praça, por extenso (`Pará`) |
+| Telefone | o WhatsApp da pergunta 2, normalizado para `+55 DD NNNNN-NNNN` |
 | Origem do lead | fixo em `Tráfego` (veja `KOMMO_ORIGEM`) |
 | URL onde converteu | URL da landing, com a query string do anúncio |
 | UTM source | `utm_source` da URL |
@@ -229,6 +229,27 @@ Nome: ...
 WhatsApp: ...
 Origem: https://...
 ```
+
+### Telefone
+
+A função normaliza o WhatsApp antes de gravar, e manda para o CRM sempre no
+formato `+55 91 98219-1573`.
+
+O motivo é um caso real: quem digita o código do país acaba com o número
+errado. A máscara do formulário lia os dois primeiros dígitos como DDD, então
+`+55 91 98219-1573` virava `(55) 91982-1915` — outro estado, e sem os dois
+últimos dígitos. Agora os dois lados tiram o `55` da frente quando sobram
+dígitos demais (nenhum número nacional passa de 11), e o `+55` explícito no
+CRM não tem como ser relido como DDD.
+
+O que **não** é mexido: número estrangeiro (começa com `+` de outro país),
+número incompleto e qualquer coisa que não seja celular de 9 dígitos começando
+em 9 ou fixo de 8 começando de 2 a 5 vão para o CRM como a pessoa escreveu. A
+nota do lead sempre guarda o WhatsApp cru, então dá para conferir.
+
+Um limite que não tem solução automática: `55 91982-1573`, com 11 dígitos, é um
+número válido de Santa Maria (DDD 55) e é indistinguível de um número com
+código do país mal digitado. Esse fica como está.
 
 ### Meta Pixel
 
