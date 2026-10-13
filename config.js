@@ -29,6 +29,32 @@ const SHEET_URL = '';
    Em ambiente local sem Netlify CLI, isso simplesmente não grava nada. */
 const CRM_URL = '/.netlify/functions/kommo';
 
+/* ------------------------------------------------------------
+ * Quais classes de lead marcam conversão na campanha
+ * ------------------------------------------------------------
+ * O formulário pontua a candidatura e dá uma classe (A, B, C ou D).
+ * Só as classes listadas aqui disparam o evento "Lead" do Meta Pixel.
+ * As demais disparam "LeadDesqualificado", que não serve de otimização
+ * mas continua aparecendo no Gerenciador e permite montar público de
+ * exclusão, para parar de pagar impressão para quem já se desqualificou.
+ *
+ * O lead entra no CRM e na planilha de qualquer jeito: isto muda apenas
+ * o que a Meta aprende, nunca o que o time de expansão recebe.
+ *
+ * Como mexer:
+ *   ['A','B','C']  padrão. Corta só o D, que é "fora do perfil".
+ *   ['A','B']      aperta o corte, se o C estiver enchendo o funil.
+ *   ['A','B','C','D','INVESTIDOR']  volta ao comportamento antigo.
+ *
+ * Use 'INVESTIDOR' para quem marca "quero investir, mas não quero operar":
+ * essa pessoa não tem classe, e hoje fica de fora do corte.
+ *
+ * Atenção ao mexer: a Meta precisa de volume para aprender (a referência
+ * dela é ~50 conversões por conjunto por semana). Apertar demais o corte
+ * encarece o lead no curto prazo antes de melhorar a qualidade.
+ */
+const CLASSES_QUE_MARCAM_LEAD = ['A', 'B', 'C'];
+
 /* Quantas praças ainda estão abertas (aparece no hero e no CTA final).
    Deixe 0 para esconder o contador de escassez. */
 const PRACAS_ABERTAS = 50;

@@ -297,6 +297,20 @@
     return soma;
   }
 
+  /* A campanha só aprende com quem interessa. Sem a lista configurada, o
+     comportamento antigo vale: todo mundo marca Lead. Assim, se o config.js
+     for de uma versão anterior, a página não para de marcar conversão. */
+  function marcaLead(classe) {
+    if (typeof CLASSES_QUE_MARCAM_LEAD === 'undefined') return true;
+    if (!CLASSES_QUE_MARCAM_LEAD.length) return true;
+
+    var chave = ehInvestidor() ? 'INVESTIDOR' : String(classe || '').charAt(0);
+    for (var i = 0; i < CLASSES_QUE_MARCAM_LEAD.length; i++) {
+      if (String(CLASSES_QUE_MARCAM_LEAD[i]).toUpperCase() === chave) return true;
+    }
+    return false;
+  }
+
   function classificar() {
     if (ehInvestidor()) return 'Investidor (não operador)';
     /* Nota máxima possível: 40 + 20 + 18 = 78 */
@@ -558,8 +572,26 @@
       elCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    /* Ganchos de conversão (Meta Pixel / GA4), se existirem na página. */
-    try { if (typeof fbq === 'function') fbq('track', 'Lead'); } catch (err) { /* sem pixel */ }
+    /* Ganchos de conversão (Meta Pixel / GA4), se existirem na página.
+       Só lead dentro do perfil marca "Lead": é esse evento que a campanha
+       usa para aprender com quem converte, e ensiná-la com candidatura fora
+       do perfil é pagar para receber mais do mesmo. Quem fica de fora dispara
+       um evento próprio, que não otimiza nada mas continua visível no
+       Gerenciador e serve de público de exclusão. Quem decide o corte é o
+       CLASSES_QUE_MARCAM_LEAD, no config.js. */
+    try {
+      if (typeof fbq === 'function') {
+        var dados = { content_category: classe, value: pontos(), currency: 'BRL' };
+        /* "Lead" é evento padrão da Meta e vai por track. "LeadDesqualificado"
+           é inventado por nós, e evento próprio só é registrado por
+           trackCustom: mandado por track, a Meta ignora. */
+        if (marcaLead(classe)) {
+          fbq('track', 'Lead', dados);
+        } else {
+          fbq('trackCustom', 'LeadDesqualificado', dados);
+        }
+      }
+    } catch (err) { /* sem pixel */ }
     try {
       if (window.dataLayer && window.dataLayer.push) {
         window.dataLayer.push({
@@ -696,7 +728,7 @@
    * captura nome, WhatsApp e perfil, grava o lead e só então
    * abre a conversa. Quem já concluiu o formulário passa direto.
    * ============================================================ */
-  var GATE_IDS = ['nome', 'whatsapp', 'perfil'];
+  var GATE_IDS = ['nome', 'whatsapp', 'praca', 'perfil'];
   var gateAnswers = {};
   var gateIdx = 0;
   var gateEl = null;
@@ -722,6 +754,7 @@
   function gateLink() {
     var msg = 'Oi! Vim pela página de operadores da VIVA.\n' +
       'Nome: ' + (gateAnswers.nome || '') + '\n' +
+      'Cidade: ' + (gateAnswers.praca || '') + '\n' +
       'Perfil: ' + (gateAnswers.perfil || '');
     return 'https://wa.me/' + (typeof WHATS !== 'undefined' ? WHATS : '') +
       '?text=' + encodeURIComponent(msg);
@@ -739,7 +772,9 @@
       perfil: gateAnswers.perfil || '',
       experiencia: '',
       capital: '',
-      praca: '',
+      /* Texto livre igual ao do formulário: a function separa cidade e estado
+         com as mesmas regras, então o lead do botão chega completo no CRM. */
+      praca: gateAnswers.praca || '',
       nome: gateAnswers.nome || '',
       whatsapp: gateAnswers.whatsapp || '',
       origem: rastreio.landing || window.location.href,
@@ -861,7 +896,7 @@
       '<div class="wa-gate-card" role="dialog" aria-modal="true" aria-label="Falar no WhatsApp">' +
       '<button type="button" class="wa-gate-close" aria-label="Fechar">&times;</button>' +
       '<div class="wa-gate-head">' + iconeWhats() + '<h3>Antes de abrir a conversa</h3></div>' +
-      '<p class="wa-gate-sub">Três informações rápidas, para o time de expansão já chegar sabendo com quem fala.</p>' +
+      '<p class="wa-gate-sub">Quatro informações rápidas, para o time de expansão já chegar sabendo com quem fala.</p>' +
       '<div class="gate-body"></div><div class="quiz-foot gate-foot"></div>' +
       '</div>';
 

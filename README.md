@@ -261,14 +261,52 @@ estavam preparados em `candidatura.js`:
 | --- | --- |
 | `PageView` | Abertura da página |
 | `InitiateCheckout` | Clicou em "Começar minha candidatura" e o formulário abriu |
-| `Lead` | Concluiu a candidatura |
-| `Contact` | Enviou nome, WhatsApp e perfil pelo botão flutuante do WhatsApp |
+| `Lead` | Concluiu a candidatura **e caiu numa classe que marca conversão** |
+| `LeadDesqualificado` | Concluiu a candidatura, mas ficou fora do corte (evento próprio, não é padrão da Meta) |
+| `Contact` | Enviou nome, WhatsApp, cidade e perfil pelo botão flutuante do WhatsApp |
 
 Todas as chamadas estão embrulhadas em `typeof fbq === 'function'`, então a
 página continua funcionando se o pixel for bloqueado por adblock ou removido.
 
 Para otimizar campanha, use o **`Lead`** como evento de conversão. Ele marca a
 candidatura completa, não só o clique no botão.
+
+#### Quem marca conversão, e por quê
+
+Nem toda candidatura concluída dispara `Lead`. Quem manda é a lista
+`CLASSES_QUE_MARCAM_LEAD`, no `config.js`, que por padrão é `['A','B','C']`:
+
+- classes **A, B e C** disparam `Lead`;
+- classe **D** ("fora do perfil prioritário") e quem marca **"quero investir,
+  mas não quero operar"** disparam `LeadDesqualificado`.
+
+O motivo é que o evento de conversão é o que ensina a Meta. Marcando `Lead`
+para candidatura fora do perfil, a campanha aprende a procurar mais gente
+daquele tipo — você paga para piorar o funil. Com o corte, ela aprende só com
+quem interessa.
+
+O `LeadDesqualificado` existe em vez de simplesmente não disparar nada por dois
+motivos: o volume total continua visível no Gerenciador, e dá para montar
+**público de exclusão** com quem já se desqualificou, parando de pagar
+impressão para a mesma pessoa.
+
+Os dois eventos levam `value` (a pontuação) e `content_category` (a classe),
+o que permite relatório por qualidade dentro do próprio Gerenciador.
+
+**O lead entra no CRM e na planilha de qualquer jeito.** Isto muda apenas o
+que a Meta aprende, nunca o que o time de expansão recebe.
+
+Dois avisos para quem for mexer na lista:
+
+1. A Meta precisa de volume para aprender — a referência dela é cerca de **50
+   conversões por conjunto por semana**. Apertar o corte reduz o sinal e
+   costuma **encarecer o lead no curto prazo**, antes de melhorar a qualidade.
+   Se a conta já roda abaixo disso, aperte com parcimônia.
+2. Mudar o evento de conversão **reinicia o aprendizado** do conjunto.
+
+Se o `config.js` for de uma versão antiga e não tiver a lista, a página volta
+ao comportamento anterior e marca `Lead` para todo mundo: assim uma
+configuração defasada nunca deixa a campanha sem conversão nenhuma.
 
 As URLs `#formulario` e `#obrigado` continuam disponíveis para quem preferir
 configurar conversão por URL, no GA4 ou no próprio Meta.
@@ -305,7 +343,7 @@ mesmo um parâmetro que não tenha campo dedicado fica registrado ali.
 | --- | --- |
 | `Completo` | Terminou as 6 perguntas |
 | `Parcial (abandonou)` | Saiu no meio, mas já tinha digitado o WhatsApp |
-| `WhatsApp (contato direto)` | Veio pelo botão flutuante, respondeu nome, WhatsApp e perfil |
+| `WhatsApp (contato direto)` | Veio pelo botão flutuante, respondeu nome, WhatsApp, cidade e perfil |
 
 ### Se o Kommo estiver fora do ar
 
@@ -359,9 +397,16 @@ formulário. Cada troca de URL também empurra um `pageview_virtual` para o
 ### Botão flutuante do WhatsApp
 
 O botão verde flutuante (e o CTA "Falar com o time de expansão") **não abre o
-wa.me direto**. Primeiro sobe um modal curto pedindo **nome, WhatsApp e perfil**;
-com isso o lead é gravado na planilha com status *"WhatsApp (contato direto)"* e
-só então a conversa abre, já com nome e perfil na primeira mensagem.
+wa.me direto**. Primeiro sobe um modal curto pedindo **nome, WhatsApp, cidade e
+perfil**; com isso o lead é gravado na planilha com status
+*"WhatsApp (contato direto)"* e só então a conversa abre, já com nome, cidade e
+perfil na primeira mensagem.
+
+A pergunta da cidade é a mesma do formulário (`praca`, reaproveitada pelo
+`GATE_IDS`), então esses leads passam pela mesma separação de cidade e estado
+descrita acima e chegam ao CRM com as duas colunas preenchidas. Na mensagem do
+WhatsApp vai o texto como a pessoa digitou; quem normaliza é a função, no
+servidor.
 
 Quem já concluiu o formulário completo não passa pelo modal, vai direto para a
 conversa.
