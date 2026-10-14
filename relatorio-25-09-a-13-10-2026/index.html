@@ -43,6 +43,7 @@
     <div class="kpi"><span class="valor">23</span><span class="rotulo">Leads no CRM</span></div>
     <div class="kpi"><span class="valor">9</span><span class="rotulo">Candidaturas completas</span></div>
     <div class="kpi destaque"><span class="valor">0</span><span class="rotulo">Leads classe A</span></div>
+    <div class="kpi destaque"><span class="valor">0</span><span class="rotulo">MQL · SQL</span></div>
   </div>
 
   <div class="nota">
@@ -189,6 +190,58 @@
 
   <div class="nota">
     <strong>O campo "Motivo qualificação" está vazio nos 21 perdidos.</strong> Ele existe no Kommo e não é preenchido. É a informação que falta para fechar o raciocínio: sabemos em que fase cada um caiu, mas não o motivo declarado. Preenchê-lo é a mudança de processo de maior retorno que este relatório identifica — o próximo documento já leria o campo automaticamente.
+  </div>
+  </section>
+
+
+  <section class="bloco pagina-nova">
+  <h2>De lead a MQL e SQL</h2>
+  <p>O funil do Kommo nomeia as próprias etapas: da 1 à 4 o registro é <strong>lead</strong>, a partir da 5 vira <strong>MQL</strong> e na 7 vira <strong>SQL</strong>. Dá então para medir quantos leads de cada período atravessaram essas fronteiras, e quanto custou cada um.</p>
+
+  <table>
+    <thead>
+      <tr><th>Etapa do funil</th><th class="num">05–24/09</th><th class="num">25/09–13/10</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Leads que entraram</td><td class="num">31</td><td class="num">23</td></tr>
+      <tr><td>1 a 4 · lead <span style="color:var(--tinta-3)">(novos, qualificação, diagnóstico)</span></td><td class="num">31</td><td class="num">23</td></tr>
+      <tr><td><strong>5 · modelo de negócio agendado · MQL</strong></td><td class="num"><strong>2</strong></td><td class="num"><strong><span class="neg">0</span></strong></td></tr>
+      <tr><td><strong>7 · fit franqueado · SQL</strong></td><td class="num"><strong>1</strong></td><td class="num"><strong><span class="neg">0</span></strong></td></tr>
+      <tr><td>Perdidos</td><td class="num">28 <span style="color:var(--tinta-3)">(90%)</span></td><td class="num">21 <span style="color:var(--tinta-3)">(91%)</span></td></tr>
+      <tr><td>Ainda em andamento</td><td class="num">1</td><td class="num">2</td></tr>
+    </tbody>
+  </table>
+
+  <h3>O que cada etapa custou</h3>
+
+  <table>
+    <thead>
+      <tr><th>Indicador</th><th class="num">05–24/09</th><th class="num">25/09–13/10</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Investimento em conversão</td><td class="num">R$ 1.800,01</td><td class="num">R$ 2.150,12</td></tr>
+      <tr><td>Custo por lead</td><td class="num">R$ 58,06</td><td class="num">R$ 93,48</td></tr>
+      <tr><td>Lead que virou MQL</td><td class="num">6,5%</td><td class="num"><span class="neg">0%</span></td></tr>
+      <tr><td><strong>Custo por MQL</strong></td><td class="num"><strong>R$ 900,00</strong></td><td class="num"><strong><span class="neg">não houve</span></strong></td></tr>
+      <tr><td>Lead que virou SQL</td><td class="num">3,2%</td><td class="num"><span class="neg">0%</span></td></tr>
+      <tr><td><strong>Custo por SQL</strong></td><td class="num"><strong>R$ 1.800,01</strong></td><td class="num"><strong><span class="neg">não houve</span></strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="nota">
+    <strong>Nenhum lead deste período chegou a MQL.</strong> Os 23 pararam na etapa 4 ou antes: 21 já foram marcados como perdidos e 2 seguem em qualificação. Os R$ 2.150,12 de verba de conversão não produziram, até 14/10, um único lead qualificado por marketing — e, por consequência, nenhum SQL.
+  </div>
+
+  <div class="nota">
+    <strong>A ressalva de maturação, e por que ela resolve pouco aqui.</strong> Lead precisa de tempo para andar no funil, e esta safra é mais nova: os de setembro tiveram três semanas a mais. Só que <strong>91% dos leads deste período já estão fechados como perdidos</strong> — a decisão já foi tomada. Restam 2 em jogo, o que limita o teto desta safra a 2 MQL. O tempo pode melhorar o número, não pode mudar a ordem de grandeza.
+  </div>
+
+  <div class="nota">
+    <strong>Mesmo o período anterior é pouco.</strong> Dois MQL e um SQL a partir de 31 leads e R$ 1.800 significam <strong>R$ 900 por MQL e R$ 1.800 por SQL</strong>. Esse é o número que importa para decidir verba — não o custo por lead de R$ 58. Entre um lead e um candidato de fato qualificado há um fator de 15 vezes no custo, e é nesse intervalo que a operação precisa melhorar.
+  </div>
+
+  <div class="nota">
+    <strong>Sobre a definição.</strong> O CRM não tem um campo "MQL" ou "SQL" — o que existe é o nome das etapas do funil, que marcam <code>[mQL - OPERADOR]</code> na etapa 5 e <code>[SQL - OPERADOR]</code> na etapa 7. Os números acima contam quem <em>alcançou</em> cada etapa, inclusive quem já passou dela. Se o time trabalha com outro critério de MQL, vale cravá-lo num campo próprio: o relatório passa a ler sozinho, como já faz com a triagem.
   </div>
   </section>
 
@@ -580,21 +633,12 @@
 
   <section class="bloco pagina-nova">
   <h2>O que está em teste agora</h2>
-  <p>Mudanças em curso, fora do período medido. Ficam registradas aqui para que o próximo relatório tenha contra o que comparar.</p>
+  <p>Mudanças em curso, fora do período medido. <strong>Ainda não há dados destes testes</strong> — eles entraram no ar depois do fechamento deste relatório. O que está registrado aqui é o desenho de cada um e o que observar, para que o próximo documento tenha contra o que comparar.</p>
 
   <h3>1. Peças novas em conjuntos separados, otimizados para <em>iniciou forms</em></h3>
   <p>Variações da peça "procura-se", separadas por conjunto, com a otimização movida de <em>lead</em> e <em>enviou forms</em> para <em>iniciou forms</em>, buscando mais dados em menos tempo.</p>
 
-  <table>
-    <thead><tr><th>Evento de otimização</th><th class="num">Volume no período</th><th class="num">Por semana</th><th>Situação</th></tr></thead>
-    <tbody>
-      <tr><td>Lead <span style="color:var(--tinta-3)">(candidatura completa)</span></td><td class="num">9</td><td class="num">3,3</td><td><span class="neg">Muito abaixo do mínimo</span></td></tr>
-      <tr><td><strong>Iniciou forms</strong></td><td class="num"><strong>21</strong></td><td class="num">7,7</td><td><span class="neg">Ainda abaixo do mínimo</span></td></tr>
-      <tr><td>Referência da Meta para sair do aprendizado</td><td class="num">—</td><td class="num">50</td><td>por conjunto</td></tr>
-    </tbody>
-  </table>
-
-  <p><strong>A direção está certa e o tamanho do ganho é menor do que parece.</strong> Trocar lead por início de formulário multiplica o sinal por 2,3 — de 3,3 para 7,7 eventos por semana. Ajuda, mas continua a um sexto da referência da Meta, e ainda por cima dividido entre vários conjuntos. O aprendizado vai seguir instável.</p>
+  <p><strong>A direção está certa e o tamanho do ganho é menor do que parece.</strong> Medido no período deste relatório, o evento de lead aconteceu 9 vezes e o de início de formulário, 21 — ou seja, trocar um pelo outro multiplica o sinal por 2,3, de 3,3 para 7,7 eventos por semana. Ajuda, mas continua a um sexto dos 50 por conjunto que a Meta usa como referência para sair do aprendizado, e ainda por cima dividido entre vários conjuntos.</p>
 
   <div class="nota">
     <strong>O risco está exatamente onde este período vazou.</strong> A conclusão do formulário caiu de 77% para 39%: de cada 10 que viram lead, 6 param no meio. Otimizar por <em>início</em> ensina a campanha a buscar quem começa, não quem termina — pode ampliar justamente esse vazamento. Por isso a métrica a acompanhar não é custo por início, e sim <strong>quantos dos que iniciam completam</strong>, e em que classe caem.
