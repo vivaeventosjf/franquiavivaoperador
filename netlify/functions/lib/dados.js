@@ -207,6 +207,9 @@ async function buscarKommo(de, ate) {
     const campos = mapearCampos(l.custom_fields_values);
     return {
       /* Nada que identifique a pessoa: só o que o relatório agrega. */
+      /* Só os nomes dos campos que vieram, para o diagnóstico de grafia lá
+         embaixo. Nomes, nunca valores. */
+      _campos: Object.keys(campos),
       criativo: campos['UTM campaign'] || 'sem utm',
       praca: limparPraca(campos['UTM medium']),
       campanha: campos['UTM source'] || '',
@@ -219,6 +222,14 @@ async function buscarKommo(de, ate) {
          ou outro funil. Ele existe no CRM do periodo, mas contá-lo como
          resultado de midia barateia o custo por lead artificialmente. */
       atribuido: Boolean(campos['UTM campaign'] || campos['UTM source']),
+      /* Preenchidos à mão pelo time na triagem. São eles que dizem POR QUE um
+         lead foi descartado -- sem isso, o relatório só sabe contar perdas.
+         Continuam sendo resposta de múltipla escolha, nunca texto com nome ou
+         telefone, então podem ser agregados neste endpoint, que é público. */
+      territorio: campos['Assertividade território'] || '',
+      persona: campos['Assertividade persona'] || '',
+      motivo: campos['Motivo qualificação'] || '',
+      fase_perdeu: campos['[FASE QUE PERDEU]'] || '',
       etapa: etapas[l.status_id] || 'sem etapa',
       perdido: l.status_id === 143 || /perdid|closed\s*-?\s*lost/i.test(etapas[l.status_id] || '')
     };
@@ -320,6 +331,22 @@ function agregar(meta, todosOsLeads, de, ate) {
     etapas: contar(leads, 'etapa'),
     status: contar(leads, 'status'),
     capital: contar(completos, 'capital'),
+    /* Triagem do time comercial. "motivo" e "fase_perdeu" são contados só
+       entre os perdidos, que é onde eles fazem sentido; território e persona
+       valem para todo lead triado. Campo em branco vira "não informado", e
+       um "não informado" alto é achado por si só: o funil está descartando
+       lead sem registrar por quê. */
+    qualificacao: {
+      territorio: contar(leads, 'territorio'),
+      persona: contar(leads, 'persona'),
+      motivo: contar(perdidos, 'motivo'),
+      fase_perdeu: contar(perdidos, 'fase_perdeu')
+    },
+    /* Nomes dos campos personalizados que vieram do Kommo neste período, sem
+       os valores. Serve para conferir a grafia quando um campo novo entrar no
+       relatório: se o nome aqui não bate com o que o código procura, o campo
+       chega sempre vazio e ninguém descobre o motivo. */
+    campos_do_crm: nomesDeCampos(todosOsLeads),
     /* Cidade declarada por praça anunciada: é o cruzamento que revela demanda
        fora do alvo, como Vitória apareceu em setembro. */
     cidades_por_praca: cidadesPorPraca(leads),
@@ -387,6 +414,15 @@ function somar(linhas) {
     s.cadastros += (l.cadastros || 0);
     return s;
   }, { gasto: 0, impressoes: 0, alcance: 0, cliques: 0, visitas: 0, formularios: 0, cadastros: 0 });
+}
+
+/* Só os nomes, nunca os valores: diagnóstico de grafia, não de conteúdo. */
+function nomesDeCampos(lista) {
+  const vistos = {};
+  (lista || []).forEach(function (l) {
+    (l._campos || []).forEach(function (nome) { vistos[nome] = true; });
+  });
+  return Object.keys(vistos).sort();
 }
 
 function contar(lista, chave) {
