@@ -367,3 +367,112 @@ tbody tr:nth-child(even) { background: var(--papel-2); }
   tr { break-inside: avoid; }
   a { text-decoration: none; }
 }
+
+/* ============================================================
+   Abas de navegação
+   O documento ficou grande demais para leitura contínua na tela:
+   são três praças, dois objetivos de campanha e uma estrutura de
+   conjuntos. As abas deixam cada recorte inteiro na tela de uma vez.
+   No papel elas somem e tudo volta a ser um documento contínuo,
+   porque PDF impresso não tem onde clicar.
+   ============================================================ */
+.abas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 18px 0 2px;
+  padding: 6px;
+  background: var(--papel);
+  border: 1px solid var(--linha-luz);
+  border-radius: var(--raio);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.abas button {
+  flex: 1 1 auto;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: calc(var(--raio) - 4px);
+  background: transparent;
+  color: var(--tinta-2);
+  font-family: inherit;
+  font-size: 9.5pt;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.abas button:hover { background: var(--linha-luz); color: var(--tinta); }
+
+.abas button[aria-selected="true"] {
+  background: var(--roxo);
+  color: #fff;
+}
+
+.abas button[aria-selected="true"] .conta { color: var(--laranja-claro); }
+.conta { font-weight: 400; color: var(--tinta-3); }
+
+.painel[hidden] { display: none; }
+
+/* Faixa de contexto no topo de cada praça */
+.contexto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  background: var(--roxo);
+  color: #fff;
+  border-radius: var(--raio);
+  font-size: 9.5pt;
+}
+.contexto b { color: var(--laranja-claro); }
+
+/* Árvore da estrutura de campanha */
+.arvore { list-style: none; padding: 0; margin: 0; }
+.arvore > li {
+  border: 1px solid var(--linha-luz);
+  border-left: 3px solid var(--laranja);
+  border-radius: var(--raio);
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+.arvore .campanha {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+  flex-wrap: wrap;
+}
+.arvore ul { list-style: none; padding: 8px 0 0 0; margin: 8px 0 0; border-top: 1px dashed var(--linha-luz); }
+.arvore ul li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 9.5pt;
+  color: var(--tinta-2);
+  flex-wrap: wrap;
+}
+.etiqueta {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 8pt;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.etiqueta.conv { background: #e8f3ec; color: #1e6b3a; }
+.etiqueta.traf { background: #eef0fb; color: #3b3fa0; }
+
+@media print {
+  .abas { display: none; }
+  /* No papel nada fica escondido: o leitor não tem como clicar numa aba. */
+  .painel[hidden] { display: block !important; }
+  .contexto { background: none; color: var(--tinta); border: 1px solid var(--linha-luz); }
+  .contexto b { color: var(--tinta); }
+}
