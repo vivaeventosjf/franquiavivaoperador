@@ -69,6 +69,12 @@
 # regra geral de /*.css valeria um ano e uma correcao nunca chegaria.
 # ------------------------------------------------------------------
 [[headers]]
+  for = "/relatorio-25-09-a-13-10-2026/*"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
   for = "/relatorio-05-09-a-24-09-2026/*"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
