@@ -222,6 +222,15 @@
         var valor = params.get(chave);
         if (valor) guardado[chave] = valor.slice(0, 200);
       });
+
+      /* O fbc é o clique no anúncio no formato que a API de Conversões da
+         Meta entende. Montado aqui, na chegada, com a hora do clique e o
+         fbclid inteiro (o de cima é cortado em 200 caracteres). Só vale como
+         reserva: o cookie _fbc do pixel, quando existe, tem preferência. */
+      var clique = params.get('fbclid');
+      if (clique && !(guardado.fbc && guardado.fbc.slice(-clique.length - 1) === '.' + clique)) {
+        guardado.fbc = 'fb.1.' + Date.now() + '.' + clique.slice(0, 500);
+      }
     } catch (e) { /* navegador antigo: segue com o que já tinha */ }
 
     if (!guardado.landing) {
@@ -236,6 +245,21 @@
     } catch (e) { /* aba anônima com storage bloqueado */ }
 
     return guardado;
+  }
+
+  /* Identificadores da Meta que vão junto com o lead para o Kommo. Quando o
+     lead vira MQL ou SQL, dias depois, a function meta-conversoes lê os dois
+     no card e devolve o evento à Meta, que liga a qualificação ao anúncio. */
+  function cookie(nome) {
+    var achado = document.cookie.match(new RegExp('(?:^|; )' + nome + '=([^;]*)'));
+    return achado ? decodeURIComponent(achado[1]) : '';
+  }
+
+  function idsMeta(rastreio) {
+    return {
+      fbc: cookie('_fbc') || rastreio.fbc || '',
+      fbp: cookie('_fbp')
+    };
   }
 
   /* Quem só quer investir não responde as perguntas de operação. */
@@ -642,7 +666,9 @@
       utm_content: rastreio.utm_content || '',
       utm_term: rastreio.utm_term || '',
       gclid: rastreio.gclid || '',
-      fbclid: rastreio.fbclid || ''
+      fbclid: rastreio.fbclid || '',
+      fbc: idsMeta(rastreio).fbc,
+      fbp: idsMeta(rastreio).fbp
     };
   }
 
@@ -785,7 +811,9 @@
       utm_content: rastreio.utm_content || '',
       utm_term: rastreio.utm_term || '',
       gclid: rastreio.gclid || '',
-      fbclid: rastreio.fbclid || ''
+      fbclid: rastreio.fbclid || '',
+      fbc: idsMeta(rastreio).fbc,
+      fbp: idsMeta(rastreio).fbp
     });
     post(typeof SHEET_URL !== 'undefined' ? SHEET_URL : '', body);
     post(typeof CRM_URL !== 'undefined' ? CRM_URL : '', body);

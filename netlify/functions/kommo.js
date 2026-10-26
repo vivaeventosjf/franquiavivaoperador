@@ -56,7 +56,13 @@ const CAMPOS = [
   { chave: 'origem', nome: 'URL onde converteu', tipo: 'text' },
   { chave: 'utm_source', nome: 'UTM source', tipo: 'text' },
   { chave: 'utm_medium', nome: 'UTM medium', tipo: 'text' },
-  { chave: 'utm_campaign', nome: 'UTM campaign', tipo: 'text' }
+  { chave: 'utm_campaign', nome: 'UTM campaign', tipo: 'text' },
+
+  /* Identificadores da Meta. Ninguém do time precisa ler: estão aqui para a
+     function meta-conversoes achar o clique do anúncio quando o lead virar
+     MQL ou SQL e avisar a Meta. */
+  { chave: 'fbc', nome: 'Meta fbc', tipo: 'text' },
+  { chave: 'fbp', nome: 'Meta fbp', tipo: 'text' }
 ];
 
 /* Sobrevivem entre invocações quentes da função: evitam bater na API a cada
