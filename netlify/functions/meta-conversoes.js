@@ -17,8 +17,10 @@
  *                         de Eventos (conjunto de dados > Configurações)
  *   META_PIXEL_ID         (opcional) id do conjunto de dados. Padrão: o pixel
  *                         da landing
- *   META_TEST_EVENT_CODE  (temporária) código da aba "Eventos de teste". Com
- *                         ele os eventos aparecem só no teste. Apague depois.
+ *   META_TEST_EVENT_CODE  (temporária) código da aba "Eventos de teste", do
+ *                         canal "Offline" (o do canal "Site" é outro, e com
+ *                         ele o evento de CRM não aparece). Com ele os eventos
+ *                         vão só para o teste. Apague depois.
  *   KOMMO_WEBHOOK_SEGREDO texto aleatório que vai no fim da URL do webhook
  *                         (?segredo=...). Sem ele a função recusa a chamada:
  *                         a URL é pública e qualquer um poderia inventar MQL.
@@ -78,11 +80,14 @@ exports.handler = async function (event) {
     try {
       const lead = await lerLead(base, cabecalho, Number(consulta.reenviar));
       const evento = montarEvento(nome, lead);
-      const envio = await enviarMeta(tokenMeta, [evento]);
+      /* &teste=CODIGO usa outro código de teste só nesta chamada. O código
+         muda por canal no Gerenciador, e evento de CRM só aparece com o do
+         canal "Offline". */
+      const envio = await enviarMeta(tokenMeta, [evento], consulta.teste);
       return resposta(200, {
         ok: true,
         evento: nome,
-        teste: Boolean(process.env.META_TEST_EVENT_CODE),
+        teste: consulta.teste || Boolean(process.env.META_TEST_EVENT_CODE),
         /* Só quais identificadores foram, nunca os valores. */
         identificadores: Object.keys(evento.user_data),
         meta: envio
@@ -415,12 +420,13 @@ function montarEvento(nome, lead) {
   };
 }
 
-async function enviarMeta(token, eventos) {
+async function enviarMeta(token, eventos, codigoTeste) {
   const pixel = process.env.META_PIXEL_ID || PIXEL_PADRAO;
   const versao = process.env.META_API_VERSION || 'v23.0';
 
   const corpo = { data: eventos, access_token: token };
-  if (process.env.META_TEST_EVENT_CODE) corpo.test_event_code = process.env.META_TEST_EVENT_CODE;
+  const teste = codigoTeste || process.env.META_TEST_EVENT_CODE;
+  if (teste) corpo.test_event_code = teste;
 
   const r = await fetch(`https://graph.facebook.com/${versao}/${pixel}/events`, {
     method: 'POST',
