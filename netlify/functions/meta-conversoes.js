@@ -38,13 +38,15 @@ const PERDIDO = 143;
 const cacheFunis = {};
 
 exports.handler = async function (event) {
-  if (event.httpMethod !== 'POST') {
+  const consulta = event.queryStringParameters || {};
+  const diagnosticando = event.httpMethod === 'GET' && consulta.diagnostico === '1';
+
+  if (event.httpMethod !== 'POST' && !diagnosticando) {
     return resposta(405, { ok: false, error: 'Use POST' });
   }
 
   const segredo = process.env.KOMMO_WEBHOOK_SEGREDO;
-  const recebido = (event.queryStringParameters || {}).segredo;
-  if (!segredo || recebido !== segredo) {
+  if (!segredo || consulta.segredo !== segredo) {
     return resposta(403, { ok: false, error: 'Segredo inválido' });
   }
 
@@ -63,10 +65,16 @@ exports.handler = async function (event) {
     'Content-Type': 'application/json; charset=utf-8'
   };
 
-  const mudancas = lerWebhook(event);
   const funilExpansao = process.env.KOMMO_PIPELINE_ID
     ? Number(process.env.KOMMO_PIPELINE_ID)
     : null;
+
+  if (diagnosticando) {
+    return resposta(200, await diagnostico(base, cabecalho, funilExpansao));
+  }
+
+  const mudancas = lerWebhook(event);
+  console.log('Webhook recebido:', JSON.stringify(mudancas));
 
   const resultado = [];
 
@@ -98,6 +106,82 @@ exports.handler = async function (event) {
 
   return resposta(200, { ok: true, enviados: resultado });
 };
+
+/* ============================================================
+ * Diagnóstico
+ * GET ?diagnostico=1&segredo=... responde, sem dado pessoal nenhum: se o
+ * Kommo tem o webhook cadastrado, quais etapas contam como MQL e SQL, e as
+ * últimas mudanças de etapa do funil com o evento que cada uma geraria.
+ * É o que dá para ver sem abrir os logs do Netlify.
+ * ============================================================ */
+async function diagnostico(base, cabecalho, funilExpansao) {
+  const saida = {
+    ok: true,
+    variaveis: {
+      META_CAPI_TOKEN: Boolean(process.env.META_CAPI_TOKEN),
+      META_TEST_EVENT_CODE: Boolean(process.env.META_TEST_EVENT_CODE),
+      KOMMO_PIPELINE_ID: funilExpansao
+    }
+  };
+
+  try {
+    const r = await fetch(`${base}/webhooks`, { headers: cabecalho });
+    if (r.status === 204) {
+      saida.webhooks = [];
+    } else if (r.ok) {
+      const corpo = await r.json();
+      saida.webhooks = ((corpo._embedded && corpo._embedded.webhooks) || []).map(function (w) {
+        return {
+          /* A senha não volta na resposta, só se ela confere. */
+          destino: String(w.destination || '').replace(/segredo=[^&]*/, 'segredo=***'),
+          senha_confere: String(w.destination || '').indexOf('segredo=' + process.env.KOMMO_WEBHOOK_SEGREDO) !== -1,
+          eventos: w.settings,
+          desativado: w.disabled
+        };
+      });
+    } else {
+      saida.webhooks = `Kommo não listou os webhooks: HTTP ${r.status}`;
+    }
+  } catch (err) {
+    saida.webhooks = String(err);
+  }
+
+  if (funilExpansao) {
+    try {
+      const funil = await lerFunil(base, cabecalho, funilExpansao);
+      saida.funil = { mql_ordem: funil.mql, sql_ordem: funil.sql, etapas: funil.nomes };
+
+      const r = await fetch(`${base}/events?filter[type]=lead_status_changed&limit=10`, { headers: cabecalho });
+      if (r.ok && r.status !== 204) {
+        const corpo = await r.json();
+        saida.ultimas_mudancas = ((corpo._embedded && corpo._embedded.events) || []).map(function (e) {
+          const antes = etapaDoEvento(e.value_before);
+          const depois = etapaDoEvento(e.value_after);
+          const doFunil = depois.funil === funilExpansao;
+          return {
+            lead: e.entity_id,
+            quando: new Date(e.created_at * 1000).toISOString(),
+            de: funil.nomes[antes.etapa] || antes.etapa,
+            para: funil.nomes[depois.etapa] || depois.etapa,
+            geraria: doFunil ? fronteirasCruzadas(funil, antes.etapa, depois.etapa) : 'outro funil'
+          };
+        });
+      } else {
+        saida.ultimas_mudancas = `HTTP ${r.status}`;
+      }
+    } catch (err) {
+      saida.funil = String(err);
+    }
+  }
+
+  return saida;
+}
+
+function etapaDoEvento(valor) {
+  const item = (valor || [])[0] || {};
+  const s = item.lead_status || {};
+  return { etapa: Number(s.id) || null, funil: Number(s.pipeline_id) || null };
+}
 
 /* ============================================================
  * Webhook do Kommo
@@ -143,7 +227,11 @@ async function lerFunil(base, cabecalho, funilId) {
   const etapas = (corpo._embedded && corpo._embedded.statuses) || [];
 
   const ordem = {};
-  etapas.forEach(function (e) { ordem[e.id] = e.sort; });
+  const nomes = {};
+  etapas.forEach(function (e) {
+    ordem[e.id] = e.sort;
+    nomes[e.id] = e.name;
+  });
 
   const mql = etapas.find(function (e) { return /\bMQL\b/.test(normalizar(e.name)); });
   const sql = etapas.find(function (e) { return /\bSQL\b/.test(normalizar(e.name)); });
@@ -153,6 +241,7 @@ async function lerFunil(base, cabecalho, funilId) {
 
   return (cacheFunis[funilId] = {
     ordem: ordem,
+    nomes: nomes,
     mql: mql ? mql.sort : null,
     sql: sql ? sql.sort : null
   });
