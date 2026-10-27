@@ -30,6 +30,7 @@
  */
 
 const crypto = require('crypto');
+const { buscarKommo } = require('./lib/dados');
 
 const PIXEL_PADRAO = '1256090053167879';
 
@@ -91,6 +92,32 @@ exports.handler = async function (event) {
         /* Só quais identificadores foram, nunca os valores. */
         identificadores: Object.keys(evento.user_data),
         meta: envio
+      });
+    } catch (err) {
+      return resposta(200, { ok: false, error: String(err) });
+    }
+  }
+
+  /* Achar um lead pela classe: ?diagnostico=1&classe=A&de=AAAA-MM-DD&ate=...
+     Devolve o id e o link do card, para abrir no Kommo. Sem nome nem
+     telefone, como o resto do diagnóstico. */
+  if (diagnosticando && consulta.classe) {
+    try {
+      const leads = await buscarKommo(consulta.de, consulta.ate, true);
+      return resposta(200, {
+        ok: true,
+        leads: leads
+          .filter(function (l) { return l.classe === String(consulta.classe).toUpperCase(); })
+          .map(function (l) {
+            return {
+              lead: l.id,
+              card: `https://${subdominio}.kommo.com/leads/detail/${l.id}`,
+              pontos: l.pontos,
+              status: l.status,
+              etapa: l.etapa,
+              utm: [l.campanha, l.praca, l.criativo].join(' | ')
+            };
+          })
       });
     } catch (err) {
       return resposta(200, { ok: false, error: String(err) });

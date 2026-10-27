@@ -168,7 +168,9 @@ function limparPraca(nome) {
  * O filtro created_at usa timestamp Unix em segundos. O "ate" recebe o fim do
  * dia para incluir quem se candidatou à noite.
  */
-async function buscarKommo(de, ate) {
+/* comId: só o diagnóstico protegido por senha de meta-conversoes pede o id,
+   para achar o card. O relatório público nunca recebe. */
+async function buscarKommo(de, ate, comId) {
   const subdominio = process.env.KOMMO_SUBDOMAIN;
   const token = process.env.KOMMO_TOKEN;
   if (!subdominio || !token) {
@@ -206,6 +208,7 @@ async function buscarKommo(de, ate) {
   return leads.map(function (l) {
     const campos = mapearCampos(l.custom_fields_values);
     return {
+      id: comId ? l.id : undefined,
       /* Nada que identifique a pessoa: só o que o relatório agrega. */
       /* Só os nomes dos campos que vieram, para o diagnóstico de grafia lá
          embaixo. Nomes, nunca valores. */
