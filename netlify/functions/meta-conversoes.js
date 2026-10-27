@@ -22,8 +22,9 @@
  *   KOMMO_WEBHOOK_SEGREDO texto aleatório que vai no fim da URL do webhook
  *                         (?segredo=...). Sem ele a função recusa a chamada:
  *                         a URL é pública e qualquer um poderia inventar MQL.
- *   KOMMO_SUBDOMAIN, KOMMO_TOKEN, KOMMO_PIPELINE_ID: as mesmas da function
- *                         kommo
+ *   KOMMO_SUBDOMAIN, KOMMO_TOKEN: as mesmas da function kommo. Não há filtro
+ *                         de funil: vale todo funil da conta com etapa de MQL
+ *                         ou de SQL (ver o laço do handler)
  */
 
 const crypto = require('crypto');
@@ -79,9 +80,11 @@ exports.handler = async function (event) {
   const resultado = [];
 
   for (const m of mudancas) {
-    /* Só o funil de expansão. Outros funis da conta ficam de fora. */
-    if (funilExpansao && m.funil !== funilExpansao) continue;
-
+    /* Qualquer funil da conta que tenha etapa de MQL e de SQL. A conta é a de
+       expansão, mas o lead não fica num funil só: entra no "1. FUNIL EXP 26"
+       e, depois da triagem, é movido para o funil de operador ou de
+       investidor, que é onde ficam as etapas de MQL e SQL. Funil sem essas
+       etapas não gera evento (fronteirasCruzadas devolve lista vazia). */
     try {
       const funil = await lerFunil(base, cabecalho, m.funil);
       const eventos = fronteirasCruzadas(funil, m.de, m.para);
@@ -146,32 +149,45 @@ async function diagnostico(base, cabecalho, funilExpansao) {
     saida.webhooks = String(err);
   }
 
-  if (funilExpansao) {
-    try {
-      const funil = await lerFunil(base, cabecalho, funilExpansao);
-      saida.funil = { mql_ordem: funil.mql, sql_ordem: funil.sql, etapas: funil.nomes };
-
-      const r = await fetch(`${base}/events?filter[type]=lead_status_changed&limit=10`, { headers: cabecalho });
-      if (r.ok && r.status !== 204) {
-        const corpo = await r.json();
-        saida.ultimas_mudancas = ((corpo._embedded && corpo._embedded.events) || []).map(function (e) {
-          const antes = etapaDoEvento(e.value_before);
-          const depois = etapaDoEvento(e.value_after);
-          const doFunil = depois.funil === funilExpansao;
-          return {
-            lead: e.entity_id,
-            quando: new Date(e.created_at * 1000).toISOString(),
-            de: funil.nomes[antes.etapa] || antes.etapa,
-            para: funil.nomes[depois.etapa] || depois.etapa,
-            geraria: doFunil ? fronteirasCruzadas(funil, antes.etapa, depois.etapa) : 'outro funil'
-          };
-        });
-      } else {
-        saida.ultimas_mudancas = `HTTP ${r.status}`;
-      }
-    } catch (err) {
-      saida.funil = String(err);
+  try {
+    const r = await fetch(`${base}/leads/pipelines`, { headers: cabecalho });
+    const corpo = await r.json();
+    const lista = (corpo._embedded && corpo._embedded.pipelines) || [];
+    saida.funis = [];
+    for (const f of lista) {
+      const funil = await lerFunil(base, cabecalho, f.id);
+      saida.funis.push({
+        id: f.id,
+        nome: f.name,
+        gera_eventos: funil.mql !== null || funil.sql !== null,
+        mql: funil.nomeMql,
+        sql: funil.nomeSql
+      });
     }
+
+    const ev = await fetch(`${base}/events?filter[type]=lead_status_changed&limit=15`, { headers: cabecalho });
+    if (ev.ok && ev.status !== 204) {
+      const lote = await ev.json();
+      const eventos = (lote._embedded && lote._embedded.events) || [];
+      saida.ultimas_mudancas = [];
+      for (const e of eventos) {
+        const antes = etapaDoEvento(e.value_before);
+        const depois = etapaDoEvento(e.value_after);
+        if (!depois.funil) continue;
+        const funil = await lerFunil(base, cabecalho, depois.funil);
+        saida.ultimas_mudancas.push({
+          lead: e.entity_id,
+          quando: new Date(e.created_at * 1000).toISOString(),
+          de: funil.nomes[antes.etapa] || antes.etapa,
+          para: funil.nomes[depois.etapa] || depois.etapa,
+          geraria: fronteirasCruzadas(funil, antes.etapa, depois.etapa)
+        });
+      }
+    } else {
+      saida.ultimas_mudancas = `HTTP ${ev.status}`;
+    }
+  } catch (err) {
+    saida.funis = String(err);
   }
 
   return saida;
@@ -233,17 +249,22 @@ async function lerFunil(base, cabecalho, funilId) {
     nomes[e.id] = e.name;
   });
 
-  const mql = etapas.find(function (e) { return /\bMQL\b/.test(normalizar(e.name)); });
-  const sql = etapas.find(function (e) { return /\bSQL\b/.test(normalizar(e.name)); });
-  if (!mql || !sql) {
-    console.error('Etapas de MQL ou SQL não encontradas no funil', funilId);
-  }
-
+  /* Mais de uma etapa pode ter MQL no nome (a 5 e a 6 têm): a fronteira é a
+     primeira delas na ordem do funil. */
+  const primeira = function (sigla) {
+    return etapas
+      .filter(function (e) { return new RegExp('\\b' + sigla + '\\b').test(normalizar(e.name)); })
+      .sort(function (a, b) { return a.sort - b.sort; })[0];
+  };
+  const mql = primeira('MQL');
+  const sql = primeira('SQL');
   return (cacheFunis[funilId] = {
     ordem: ordem,
     nomes: nomes,
     mql: mql ? mql.sort : null,
-    sql: sql ? sql.sort : null
+    sql: sql ? sql.sort : null,
+    nomeMql: mql ? mql.name : null,
+    nomeSql: sql ? sql.name : null
   });
 }
 
