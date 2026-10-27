@@ -190,6 +190,23 @@ async function diagnostico(base, cabecalho, funilExpansao) {
         mql: funil.nomeMql,
         sql: funil.nomeSql
       });
+
+      /* Quem está hoje em SQL ou depois (só id e etapa), para achar um lead
+         e reenviar o evento à mão. 142 e 143 são ganho e perda. */
+      if (funil.sql === null) continue;
+      const etapasSql = funil.etapas.filter(function (e) {
+        return e.sort >= funil.sql && e.id !== 142 && e.id !== 143;
+      });
+      if (!etapasSql.length) continue;
+      const filtro = etapasSql.map(function (e, i) {
+        return `filter[statuses][${i}][pipeline_id]=${f.id}&filter[statuses][${i}][status_id]=${e.id}`;
+      }).join('&');
+      const l = await fetch(`${base}/leads?${filtro}&limit=50`, { headers: cabecalho });
+      if (!l.ok || l.status === 204) continue;
+      const leads = ((await l.json())._embedded || {}).leads || [];
+      saida.em_sql = (saida.em_sql || []).concat(leads.map(function (lead) {
+        return { lead: lead.id, funil: f.name, etapa: funil.nomes[lead.status_id] };
+      }));
     }
 
     const ev = await fetch(`${base}/events?filter[type]=lead_status_changed&limit=15`, { headers: cabecalho });
@@ -286,6 +303,7 @@ async function lerFunil(base, cabecalho, funilId) {
   const mql = primeira('MQL');
   const sql = primeira('SQL');
   return (cacheFunis[funilId] = {
+    etapas: etapas,
     ordem: ordem,
     nomes: nomes,
     mql: mql ? mql.sort : null,
