@@ -70,6 +70,28 @@ exports.handler = async function (event) {
     ? Number(process.env.KOMMO_PIPELINE_ID)
     : null;
 
+  /* Reenvio manual: ?diagnostico=1&reenviar=<id do lead>&evento=MQL|SQL.
+     Serve para lead que cruzou a etapa antes da integração estar no ar, e
+     para ver a resposta crua da Meta quando um evento não aparece. */
+  if (diagnosticando && consulta.reenviar) {
+    const nome = consulta.evento === 'SQL' ? 'SQL' : 'MQL';
+    try {
+      const lead = await lerLead(base, cabecalho, Number(consulta.reenviar));
+      const evento = montarEvento(nome, lead);
+      const envio = await enviarMeta(tokenMeta, [evento]);
+      return resposta(200, {
+        ok: true,
+        evento: nome,
+        teste: Boolean(process.env.META_TEST_EVENT_CODE),
+        /* Só quais identificadores foram, nunca os valores. */
+        identificadores: Object.keys(evento.user_data),
+        meta: envio
+      });
+    } catch (err) {
+      return resposta(200, { ok: false, error: String(err) });
+    }
+  }
+
   if (diagnosticando) {
     return resposta(200, await diagnostico(base, cabecalho, funilExpansao));
   }
@@ -410,7 +432,11 @@ async function enviarMeta(token, eventos) {
   if (!r.ok) {
     throw new Error(`Meta recusou: HTTP ${r.status} ${JSON.stringify(resposta.error || resposta).slice(0, 300)}`);
   }
-  return { recebidos: resposta.events_received };
+  return {
+    recebidos: resposta.events_received,
+    avisos: resposta.messages && resposta.messages.length ? resposta.messages : undefined,
+    rastreio: resposta.fbtrace_id
+  };
 }
 
 /* A Meta quer o telefone só com dígitos e com o código do país: 5532988677558.
