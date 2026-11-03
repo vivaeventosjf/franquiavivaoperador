@@ -24,6 +24,29 @@ fora do mercado são aceitos, mas classificados abaixo.
 | `netlify/functions/lib/municipios.js` | Lista de municípios do IBGE, usada para preencher cidade e estado no CRM. Gerada, não editar à mão. |
 | `netlify.toml` | Configuração de publicação e de funções no Netlify. |
 | `assets/` | Logo VIVA vetorizada (SVG), PNGs e favicon. |
+| `socio/` | Segunda landing, mais direta: "procuramos sócio". Ver abaixo. |
+
+## Landing `/socio/` ("procuramos sócio")
+
+Criada em nov/2026 para acompanhar os anúncios da linha "sócio"
+(`anuncios/gerar_socio.py`, fora deste repositório). Os anúncios antigos diziam
+"procura-se vendedor de formatura" e eram lidos como vaga de emprego. Esta página
+abre com as mesmas duas perguntas do criativo ("Conhece o mercado de formaturas?
+Quer ter sua própria empresa no ramo?") e segue com requisitos, sociedade e o
+formulário.
+
+- Endereço: `vivaoperador.netlify.app/socio/`.
+- **Mesma integração da principal.** Ela carrega `../config.js`, `../script.js` e
+  `../candidatura.js` sem cópia nenhuma. Então o formulário, o pixel, o gate do
+  WhatsApp e o envio para o Kommo são os mesmos. Mudar um desses arquivos muda as
+  duas páginas.
+- **No Kommo**, o lead desta página se distingue pelo campo "URL onde converteu",
+  que começa com `/socio/`.
+- **Visual.** A identidade é a mesma da principal (pedido do cliente): todo o
+  visual vem do `../styles.css` e dos mesmos componentes (hero, proof, perfil,
+  cadeiras, entrega). O `socio/socio.css` só acrescenta as duas perguntas do topo
+  e a logo no meio do título. Ao editar o `socio.css`, suba o `?v=` no
+  `index.html`, senão o cache de um ano segura a versão antiga.
 
 ## Antes de publicar, edite `config.js`
 

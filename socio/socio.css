@@ -1,0 +1,41 @@
+/* ============================================================
+   VIVA Eventos · Landing "procuramos sócio" (/socio/)
+   Carrega DEPOIS do ../styles.css, que dá toda a identidade
+   (roxo, laranja, Lato, Permanent Marker, botões, formulário).
+   Aqui ficam só as duas peças que a landing principal não tem.
+   ============================================================ */
+
+/* ---------- As duas perguntas do topo (as mesmas do criativo) ---------- */
+.s-perguntas { margin: 26px 0 30px; display: grid; gap: 12px; max-width: 620px; }
+.s-perguntas li {
+  display: flex; align-items: center; gap: 16px;
+  border: 1px solid var(--linha-2); border-radius: var(--raio-sm);
+  background: rgba(255, 255, 255, .05);
+  padding: 14px 18px;
+  font-size: clamp(17px, 2vw, 21px); font-weight: 900; letter-spacing: -.015em; line-height: 1.25;
+}
+.s-caixa {
+  flex: none; width: 34px; height: 34px; border-radius: 9px; background: var(--laranja);
+  display: grid; place-items: center;
+}
+.s-caixa svg { width: 20px; fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- "A VIVA" no título vai com a logo oficial ----------
+   A mesma imagem do topo do site. O "VIVA" dela fica na linha do texto e o
+   "eventos" desce abaixo da linha de base. */
+.s-marca {
+  display: inline-block; height: 1.12em; width: auto;
+  vertical-align: -0.4em; margin: 0 .06em;
+}
+
+/* Sem o quadro lateral, o topo vira uma coluna só. */
+.pg-socio .hero-inner { grid-template-columns: 1fr; }
+.pg-socio .hero-inner > div { max-width: 820px; }
+
+/* Sem menu nesta página: o botão do topo continua visível no celular. */
+@media (max-width: 880px) {
+  .pg-socio .header-cta .btn { display: inline-flex; }
+}
+@media (max-width: 420px) {
+  .pg-socio .brand-logo { height: 34px; }
+}
