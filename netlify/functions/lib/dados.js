@@ -234,9 +234,29 @@ async function buscarKommo(de, ate, comId) {
       motivo: campos['Motivo qualificação'] || '',
       fase_perdeu: campos['[FASE QUE PERDEU]'] || '',
       etapa: etapas[l.status_id] || 'sem etapa',
-      perdido: l.status_id === 143 || /perdid|closed\s*-?\s*lost/i.test(etapas[l.status_id] || '')
+      perdido: l.status_id === 143 || /perdid|closed\s*-?\s*lost/i.test(etapas[l.status_id] || ''),
+      /* Em qual landing a pessoa se cadastrou. Só o nome da página, nunca a
+         URL inteira, que carrega fbclid e outros identificadores de clique. */
+      pagina: paginaDe(campos['URL onde converteu'])
     };
   });
+}
+
+/* "https://franquia.vivaeventos.com.br/socio/?utm..." vira "socio"; a raiz
+   do site vira "principal". Landing nova entra aqui com o nome da pasta. */
+function paginaDe(url) {
+  const texto = String(url || '').trim();
+  if (!texto) return 'sem url';
+  let caminho;
+  try {
+    /* Sem protocolo, o URL leria o domínio como caminho. */
+    caminho = new URL(/^[a-z]+:\/\//i.test(texto) ? texto : 'https://' + texto).pathname;
+  } catch (e) {
+    caminho = texto.replace(/^[a-z]+:\/\/[^/]+/i, '').split(/[?#]/)[0];
+  }
+  const pasta = caminho.split('/').filter(Boolean)[0];
+  if (!pasta || /^index\.html?$/i.test(pasta)) return 'principal';
+  return pasta.toLowerCase();
 }
 
 /* Os campos personalizados vêm como lista; o relatório pensa por nome. */
@@ -353,10 +373,46 @@ function agregar(meta, todosOsLeads, de, ate) {
     /* Cidade declarada por praça anunciada: é o cruzamento que revela demanda
        fora do alvo, como Vitória apareceu em setembro. */
     cidades_por_praca: cidadesPorPraca(leads),
+    /* Qualidade do lead por landing (principal, socio...), lida da URL em
+       que cada um converteu. A mídia não entra aqui: o gasto por página sai
+       do nome do conjunto (PAG01, PAG02), e "conjuntos" mostra esse cruzamento
+       para conferir qual conjunto leva a qual página. */
+    paginas: porPagina(leads, todosOsLeads),
     /* Todos os eventos que a conta registrou no periodo, por nome. Serve para
        conferir se o evento certo esta sendo lido. */
     eventos_meta: somarEventos(meta)
   };
+}
+
+function porPagina(leads, todosOsLeads) {
+  const fora = {};
+  const nomes = new Set(todosOsLeads.map(function (l) { return l.pagina; }));
+  nomes.forEach(function (nome) {
+    const meus = leads.filter(function (l) { return l.pagina === nome; });
+    const completos = meus.filter(function (l) { return /completo/i.test(l.status); });
+    const perdidos = meus.filter(function (l) { return l.perdido; });
+    fora[nome] = {
+      leads: meus.length,
+      sem_atribuicao: todosOsLeads.filter(function (l) {
+        return l.pagina === nome && !l.atribuido;
+      }).length,
+      completos: completos.length,
+      perdidos: perdidos.length,
+      classificacao: contar(meus, 'classe'),
+      pontos_media: completos.length
+        ? arred(completos.reduce(function (s, l) { return s + l.pontos; }, 0) / completos.length)
+        : 0,
+      status: contar(meus, 'status'),
+      capital: contar(completos, 'capital'),
+      etapas: contar(meus, 'etapa'),
+      territorio: contar(meus, 'territorio'),
+      persona: contar(meus, 'persona'),
+      fase_perdeu: contar(perdidos, 'fase_perdeu'),
+      conjuntos: contar(meus, 'praca'),
+      criativos: contar(meus, 'criativo')
+    };
+  });
+  return fora;
 }
 
 function agrupar(meta, leads, chave) {
