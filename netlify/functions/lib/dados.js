@@ -523,8 +523,17 @@ function dataValida(s) {
 
 async function montarRelatorio(de, ate) {
   /* Em paralelo: são duas APIs independentes e a função tem tempo limitado. */
-  const [meta, leads] = await Promise.all([buscarMeta(de, ate), buscarKommo(de, ate)]);
-  return agregar(meta, leads, de, ate);
+  /* Se a Meta falhar (token vencido ou bloqueado), o Kommo ainda vale: o
+     relatório sai com a mídia zerada e um aviso, e os números de mídia podem
+     vir do CSV exportado do Gerenciador de Anúncios. */
+  let avisoMeta = null;
+  const [meta, leads] = await Promise.all([
+    buscarMeta(de, ate).catch(function (e) { avisoMeta = e.message; return []; }),
+    buscarKommo(de, ate)
+  ]);
+  const rel = agregar(meta, leads, de, ate);
+  if (avisoMeta) rel.aviso_meta = avisoMeta;
+  return rel;
 }
 
 module.exports = {
