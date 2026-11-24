@@ -448,7 +448,10 @@ function cidadesPorPraca(leads) {
   const fora = {};
   leads.forEach(function (l) {
     const p = l.praca || 'sem praça';
-    const c = (l.cidade || 'não informada').trim();
+    let c = (l.cidade || 'não informada').trim();
+    /* Campo livre: há quem digite e-mail ou telefone aqui. Isso não pode sair
+       num agregado público. */
+    if (/@|\d{4}/.test(c)) c = 'inválida';
     fora[p] = fora[p] || {};
     fora[p][c] = (fora[p][c] || 0) + 1;
   });
